@@ -1,0 +1,117 @@
+plugins {
+    id "java"
+    id "war"
+    id "org.springframework.boot" version "3.3.7"
+    id "io.spring.dependency-management" version "1.1.7"
+    id "com.github.node-gradle.node" version "7.1.0"
+}
+
+group = "com.example"
+version = "0.1.0"
+
+repositories {
+    mavenCentral()
+}
+
+def projectRootDir = file("${rootDir}/..")
+def offlineDir = file("${projectRootDir}/offline")
+def frontendDistDir = file("${rootDir}/../frontend/dist")
+def generatedFrontendDir = layout.buildDirectory.dir("generated/frontend")
+def npmCacheDir = file("${offlineDir}/npm-cache")
+def offlineNodeDir = file("${offlineDir}/nodejs")
+def hiraSampleCsv = file("${projectRootDir}/data/processed/hira/hira_institution_open_status_sample_1000_h2.csv")
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+sourceSets {
+    main {
+        resources {
+            srcDir generatedFrontendDir
+        }
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+dependencies {
+    implementation "org.springframework.boot:spring-boot-starter-actuator"
+    implementation "org.springframework.boot:spring-boot-starter-cache"
+    implementation "org.springframework.boot:spring-boot-starter-data-jpa"
+    implementation "org.springframework.boot:spring-boot-starter-oauth2-resource-server"
+    implementation "org.springframework.boot:spring-boot-starter-security"
+    implementation "org.springframework.boot:spring-boot-starter-validation"
+    implementation "org.springframework.boot:spring-boot-starter-web"
+    implementation "org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.4"
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0"
+    implementation "com.oracle.oci.sdk:oci-java-sdk-common:3.50.2"
+    compileOnly "org.projectlombok:lombok"
+    providedRuntime "org.springframework.boot:spring-boot-starter-tomcat"
+    runtimeOnly "com.h2database:h2"
+    annotationProcessor "org.projectlombok:lombok"
+    testImplementation "org.springframework.boot:spring-boot-starter-test"
+    testImplementation "org.springframework.security:spring-security-test"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+tasks.named("test") {
+    useJUnitPlatform()
+}
+
+node {
+    version = "22.13.1"
+    npmVersion = "10.9.2"
+    download = true
+    workDir = offlineNodeDir
+    npmWorkDir = file("${offlineDir}/npm")
+    nodeProjectDir = file("${rootDir}/../frontend")
+}
+
+tasks.named("npmInstall") {
+    args = ["--cache", npmCacheDir.absolutePath, "--prefer-offline"]
+}
+
+tasks.named("npm_run_build") {
+    dependsOn tasks.named("npmInstall")
+    inputs.files(
+        fileTree("${rootDir}/../frontend/src"),
+        file("${rootDir}/../frontend/index.html"),
+        file("${rootDir}/../frontend/package.json"),
+        file("${rootDir}/../frontend/package-lock.json"),
+        file("${rootDir}/../frontend/tsconfig.json"),
+        file("${rootDir}/../frontend/vite.config.ts"),
+        file("${rootDir}/../frontend/tailwind.config.js"),
+        file("${rootDir}/../frontend/postcss.config.js")
+    )
+    outputs.dir(frontendDistDir)
+}
+
+tasks.register("copyFrontendDist", Copy) {
+    dependsOn tasks.named("npm_run_build")
+    description = "Copies the Vue production build into Spring Boot static resources."
+    group = "build"
+    from frontendDistDir
+    into generatedFrontendDir.map { it.dir("static") }
+}
+
+tasks.named("processResources") {
+    dependsOn tasks.named("copyFrontendDist")
+    from(hiraSampleCsv) {
+        into "sample-data/hira"
+    }
+}
+
+bootWar {
+    archiveFileName = "governance-portal-backend.war"
+}
+
+bootJar {
+    enabled = false
+}
