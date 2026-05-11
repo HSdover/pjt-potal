@@ -1,0 +1,17 @@
+[Unit]
+Description=Governance Portal Spring Boot API
+After=network.target
+
+[Service]
+User=governance
+Group=governance
+WorkingDirectory=/opt/governance-portal
+Environment=SERVER_PORT=18080
+Environment=GOVERNANCE_SAMPLE_DATA_ENABLED=true
+ExecStart=/usr/bin/java -jar /opt/governance-portal/governance-portal-backend.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

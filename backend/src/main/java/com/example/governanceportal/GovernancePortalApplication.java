@@ -2,18 +2,11 @@ package com.example.governanceportal;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.builder.SpringApplicationBuilder;
-import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 
 @SpringBootApplication
-public class GovernancePortalApplication extends SpringBootServletInitializer {
+public class GovernancePortalApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(GovernancePortalApplication.class, args);
-    }
-
-    @Override
-    protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
-        return application.sources(GovernancePortalApplication.class);
     }
 }

@@ -1,146 +1,95 @@
 Governance Portal 프로젝트 구성 문서
-작성일: 2026-04-28
-수정일: 2026-05-06
-적용 범위: 현재 로컬 프로젝트 구조, Frontend/Backend 구현, 오프라인 빌드, JEUS/WebtoB 배포
+
+작성일: 2026-05-11
 
 1. 프로젝트 개요
 
-- Governance Portal은 Vue 3 프론트엔드와 Spring Boot 3.3 백엔드를 분리 개발하고, 운영에서는 하나의 Spring Boot WAR로 배포하는 구조입니다.
-- 운영 배포 흐름은 WebtoB -> JEUS 9 -> Spring Boot WAR입니다.
-- 운영 서버에서 Node.js 서버를 띄우지 않습니다. Node.js/npm은 WAR 빌드 중 Vue 정적 파일을 생성할 때만 사용합니다.
-- 백엔드 Gradle 빌드가 프론트엔드 `npm install`과 `npm run build`를 실행하고, `frontend/dist` 결과물을 WAR 정적 리소스로 포함합니다.
-- 내부망 빌드를 위해 `offline` 폴더와 `scripts` 폴더를 사용합니다.
+Governance Portal은 Vue 3 프론트엔드와 Spring Boot 3.3 백엔드로 구성된 데이터 거버넌스 포털 샘플입니다.
 
-2. 전체 프로젝트 경로
+운영 배포는 Nginx + Spring Boot executable JAR 구조를 기준으로 합니다.
 
-- `<project-root>\governance-portal`
+- Nginx: Vue 정적 파일 서빙, API reverse proxy
+- Spring Boot: embedded Tomcat 기반 API 서버
+- Frontend 산출물: `frontend/dist`
+- Backend 산출물: `backend/build/libs/governance-portal-backend.jar`
 
-3. 주요 폴더 역할
+2. 주요 디렉터리
 
 - `backend`
-  - Java 21, Spring Boot 3.3.7, Gradle 기반 백엔드 프로젝트입니다.
-  - WAR 배포를 위해 `war` 플러그인과 `providedRuntime` Tomcat 구성을 사용합니다.
-  - JEUS 같은 외부 Servlet 컨테이너에서 초기화되도록 `SpringBootServletInitializer`를 사용합니다.
+  - Java 21, Spring Boot 3.3 기반 백엔드 프로젝트입니다.
+  - 실행 JAR를 생성합니다.
   - REST API, H2 개발 DB, Spring Security, OpenAPI, Actuator 설정을 포함합니다.
 - `frontend`
   - Vue 3, TypeScript, Vite 기반 프론트엔드 프로젝트입니다.
-  - 개발 중에는 Vite dev server를 사용하고, 운영에서는 빌드된 정적 파일만 WAR에 포함됩니다.
-  - 화면은 메타데이터, 원천 샘플, 리니지, 테이블 상세 샘플 중심으로 구성되어 있습니다.
+  - 개발 중에는 Vite dev server를 사용하고, 운영에서는 `frontend/dist` 정적 파일을 Nginx가 제공합니다.
+- `infra`
+  - Nginx와 systemd 예시 설정을 둡니다.
 - `docs`
-  - 프로젝트 구조, 오프라인 빌드, JEUS/WebtoB 배포 문서를 둡니다.
+  - 프로젝트 구조, 배포, 오프라인 빌드 문서를 둡니다.
 - `offline`
-  - 내부망 오프라인 빌드에 필요한 Gradle 캐시, npm 캐시, Node/npm 작업 디렉터리를 둡니다.
-  - 외부망 PC에서 `scripts\prepare-offline-bundle.ps1`을 실행해 채웁니다.
+  - 내부망 오프라인 빌드를 위한 npm/Gradle cache를 둡니다.
 - `scripts`
-  - `prepare-offline-bundle.ps1`: 외부망 PC에서 오프라인 빌드 캐시를 준비합니다.
-  - `build-offline-war.ps1`: 내부망 PC에서 `--offline` 모드로 WAR를 빌드합니다.
+  - 운영 빌드와 오프라인 빌드 스크립트를 둡니다.
 - `data`
-  - HIRA 원천/가공 샘플 데이터와 README를 둡니다.
+  - HIRA 원천/가공 샘플 데이터를 둡니다.
+- `개선사항`
+  - 프론트엔드 템플릿화와 개선 후보를 기록합니다.
 
-4. Backend 주요 파일
+3. Backend 주요 파일
 
-- `backend\settings.gradle`
-  - Gradle plugin repository와 dependency repository를 설정합니다.
-  - Gradle Node Plugin의 저장소 사용을 고려해 `RepositoriesMode.PREFER_PROJECT`를 사용합니다.
-- `backend\build.gradle`
-  - Java 21 toolchain, Spring Boot 3.3.7, WAR 빌드, 프론트엔드 빌드 연동을 정의합니다.
-  - `bootWar` 산출물 이름은 `governance-portal-backend.war`입니다.
-  - `bootJar`는 비활성화되어 있습니다.
-  - `npm_run_build`가 `npmInstall`에 의존하고, Vue 빌드 결과를 `copyFrontendDist`가 `backend\build\generated\frontend\static`으로 복사합니다.
-  - `processResources`가 `copyFrontendDist`에 의존하므로 WAR에 Vue 정적 파일이 포함됩니다.
-  - HIRA 샘플 CSV를 `sample-data\hira` classpath resource로 함께 포함합니다.
-- `backend\src\main\resources\application.yml`
-  - 서버 포트, Virtual Threads, H2 개발 DB, SQL 초기화, JPA, H2 console, OpenAPI, Actuator 설정을 정의합니다.
-  - 포트, DataSource, SQL 초기화 모드, 샘플 CSV 경로는 환경 변수로 override할 수 있습니다.
-- `backend\src\main\resources\schema.sql`
+- `backend/build.gradle`
+  - Java 21 toolchain, Spring Boot 3.3.7, 실행 JAR 빌드를 정의합니다.
+  - `bootJar` 산출물 이름은 `governance-portal-backend.jar`입니다.
+  - Vue 빌드 결과를 JAR에 포함하지 않습니다.
+- `backend/src/main/resources/application.yml`
+  - 서버 포트 기본값은 `18080`입니다.
+  - reverse proxy 환경을 위해 `server.forward-headers-strategy=framework`를 사용합니다.
+- `backend/src/main/resources/schema.sql`
   - `hira_institution_sample`, `metadata_catalog`, `lineage_flow` 테이블을 생성합니다.
-- `backend\src\main\resources\data.sql`
-  - 개발/샘플 화면에서 사용할 메타데이터와 리니지 초기 데이터를 적재합니다.
-- `backend\src\main\java\com\example\governanceportal\catalog\SampleDataInitializer.java`
-  - HIRA 샘플 CSV를 classpath resource 또는 프로젝트 상대 경로에서 읽어 `hira_institution_sample`에 적재합니다.
-  - `GOVERNANCE_SAMPLE_DATA_ENABLED=false`로 샘플 CSV 자동 적재를 끌 수 있습니다.
-  - `GOVERNANCE_HIRA_SAMPLE_CSV`로 CSV 위치를 직접 지정할 수 있습니다.
-- `backend\src\main\java\com\example\governanceportal\GovernancePortalApplication.java`
-  - Spring Boot 진입점입니다.
-  - 외부 Servlet 컨테이너 배포를 위해 `SpringBootServletInitializer`를 상속합니다.
-- `backend\src\main\java\com\example\governanceportal\config\ApiClientConfig.java`
-  - Spring `RestClient` Bean을 제공합니다.
-- `backend\src\main\java\com\example\governanceportal\config\SecurityConfig.java`
-  - 현재 개발 단계에서는 `/api/**`, Swagger, H2 console, 정적 리소스 접근을 허용합니다.
-- `backend\src\main\java\com\example\governanceportal\config\SpaForwardConfig.java`
-  - SPA 새로고침을 위해 API/Swagger/Actuator/H2가 아닌 프론트 경로의 404를 `index.html`로 forward합니다.
-- `backend\src\main\java\com\example\governanceportal\catalog\CatalogController.java`
+- `backend/src/main/resources/data.sql`
+  - 샘플 메타데이터와 리니지 데이터를 적재합니다.
+- `backend/src/main/java/com/example/governanceportal/GovernancePortalApplication.java`
+  - 실행 JAR 기준 Spring Boot 진입점입니다.
+- `backend/src/main/java/com/example/governanceportal/catalog/CatalogController.java`
   - 현재 프론트엔드가 사용하는 샘플 REST API를 제공합니다.
   - `GET /api/catalog/metadata`
   - `GET /api/catalog/lineage`
   - `GET /api/catalog/source-sample`
-- `backend\src\main\java\com\example\governanceportal\catalog\MetadataCatalogItem.java`
-  - 메타데이터 카탈로그 응답 DTO입니다.
-- `backend\src\main\java\com\example\governanceportal\catalog\LineageFlowItem.java`
-  - 리니지 흐름 응답 DTO입니다.
-- `backend\src\main\java\com\example\governanceportal\catalog\SourceSampleItem.java`
-  - HIRA 원천 샘플 응답 DTO입니다.
-- `backend\src\test\java\com\example\governanceportal\GovernancePortalApplicationTests.java`
-  - Spring Boot 컨텍스트와 카탈로그 API 샘플 응답을 검증합니다.
 
-5. Backend 의존성
+4. Frontend 주요 파일
 
-- Java 21 LTS
-- Spring Boot 3.3.7
-- Spring Web, Security, OAuth2 Resource Server, Validation
-- Spring Data JPA, MyBatis, Redis, Cache
-- Springdoc OpenAPI
-- Actuator
-- H2 Database
-- OCI Java SDK common
-- Lombok
-- JUnit 5, Spring Boot Test, Spring Security Test
-
-6. Frontend 주요 파일
-
-- `frontend\package.json`
-  - Vite/Vue 개발, 빌드, 테스트 스크립트와 프론트엔드 의존성을 정의합니다.
-- `frontend\index.html`
-  - Vite 애플리케이션 진입 HTML입니다.
-- `frontend\vite.config.ts`
-  - Vue 플러그인, `@` alias, 개발 중 `/api` 프록시를 설정합니다.
-- `frontend\src\main.ts`
-  - Vue 앱 생성, Pinia, Element Plus, Router 등록 진입점입니다.
-- `frontend\src\App.vue`
-  - 최상위 레이아웃과 메뉴를 구성합니다.
-- `frontend\src\router\index.ts`
-  - `/metadata`, `/source-sample`, `/lineage`, `/table-detail-sample` 라우트를 정의합니다.
-- `frontend\src\views\MetadataView.vue` 및 `MetadataView.ts`
-  - `/api/catalog/metadata`를 조회해 AG Grid로 메타데이터 카탈로그를 표시합니다.
-- `frontend\src\views\SourceSampleView.vue` 및 `SourceSampleView.ts`
-  - `/api/catalog/source-sample`을 조회해 HIRA 원천 샘플을 표시합니다.
-- `frontend\src\views\LineageView.vue` 및 `LineageView.ts`
-  - `/api/catalog/lineage`를 조회하고 Vue Flow와 AG Grid로 리니지를 표시합니다.
-- `frontend\src\views\TableDetailSampleView.vue` 및 `TableDetailSampleView.ts`
-  - 현재는 API 연동 없이 하드코딩된 테이블 상세 샘플 데이터를 표시합니다.
-- `frontend\src\components\LineageFlow.vue`
+- `frontend/package.json`
+  - Vite/Vue 개발, 빌드, 테스트 스크립트를 정의합니다.
+- `frontend/vite.config.ts`
+  - 개발 중 `/api` 요청을 기본적으로 `http://localhost:18080`으로 프록시합니다.
+- `frontend/src/router/index.ts`
+  - 주요 화면 라우트를 정의합니다.
+- `frontend/src/features`
+  - SI 템플릿화 기준에 맞춰 업무 기능별 API, 타입, 컬럼, 화면을 둡니다.
+- `frontend/src/shared`
+  - 공통 API 클라이언트, 목록 타입, 그리드, 검색 패널, 권한 버튼을 둡니다.
+- `frontend/src/components/LineageFlow.vue`
   - Vue Flow 기반 리니지 그래프 컴포넌트입니다.
-- `frontend\src\components\GridPageLayout.vue`
-  - 그리드형 화면의 공통 레이아웃 컴포넌트입니다.
-- `frontend\public\styles\common-style.css`
-  - 테이블 상세 샘플 화면에서 동적으로 로드하는 기존 스타일 파일입니다.
+- `frontend/src/components/GridPageLayout.vue`
+  - 목록형 화면 공통 레이아웃입니다.
 
-7. Frontend 의존성
+5. Infra 주요 파일
 
-- Vue 3
-- TypeScript 5
-- Vite 5
-- Vue Router
-- Pinia
-- Element Plus
-- AG Grid Vue
-- Vue Flow
-- Tailwind CSS, PostCSS, Autoprefixer
-- Vitest
-- Playwright
-- vue-tsc
+- `infra/nginx/governance-portal.conf`
+  - Vue 정적 파일 서빙과 Spring Boot API reverse proxy 예시입니다.
+- `infra/systemd/governance-portal.service`
+  - Spring Boot 실행 JAR systemd 서비스 예시입니다.
 
-8. 개발 실행
+6. Scripts
+
+- `scripts/build-production.ps1`
+  - 프론트엔드 정적 파일과 백엔드 실행 JAR를 함께 빌드합니다.
+- `scripts/prepare-offline-bundle.ps1`
+  - 외부망 PC에서 오프라인 빌드 캐시를 준비합니다.
+- `scripts/build-offline-jar.ps1`
+  - 내부망 PC에서 오프라인 모드로 정적 파일과 JAR를 빌드합니다.
+
+7. 개발 실행
 
 Backend:
 
@@ -157,26 +106,14 @@ npm install
 npm run dev
 ```
 
-- Backend 기본 주소: `http://localhost:8080`
-- Frontend 기본 주소: `http://localhost:5173`
-- Vite 개발 서버는 기본적으로 `/api` 요청을 `http://localhost:8080`으로 프록시합니다.
-- 백엔드 포트나 호스트가 다르면 `VITE_API_PROXY_TARGET`으로 프록시 대상을 바꿀 수 있습니다.
-
-9. 운영 빌드와 배포
+8. 운영 빌드
 
 ```powershell
-cd backend
-.\gradlew.bat bootWar
+.\scripts\build-production.ps1
 ```
 
-- 최종 산출물: `backend\build\libs\governance-portal-backend.war`
-- `frontend\dist`는 Gradle 빌드 과정에서 생성됩니다.
-- Vue 정적 파일은 `backend\build\generated\frontend\static`으로 복사되고 WAR에 포함됩니다.
-- JEUS 9에는 WAR 파일 하나를 배포합니다.
-- WebtoB는 `/`, `/assets/*`, `/api/*`, `/swagger-ui.html` 같은 요청을 JEUS로 전달합니다.
+9. 배포 기준
 
-10. 현재 문서와 구현 기준
-
-- 현재 프로젝트에는 `dashboard` 패키지, `DashboardView`, `PipelineGrid`, `QualityChart`, `frontend\src\stores\dashboard.ts`가 없습니다.
-- 현재 구현 기준 API는 `/api/dashboard/summary`가 아니라 `/api/catalog/*`입니다.
-- 문서는 현재 `catalog` 패키지와 메타데이터/원천 샘플/리니지 화면 기준으로 유지해야 합니다.
+- `frontend/dist`는 Nginx 정적 파일 루트에 배치합니다.
+- `governance-portal-backend.jar`는 Spring Boot API 서버로 systemd에서 실행합니다.
+- Nginx가 `/api/*`, `/api-docs/*`, `/swagger-ui*`, `/actuator/*`를 Spring Boot로 전달합니다.

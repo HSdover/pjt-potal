@@ -1,19 +1,29 @@
-# Offline Build Bundle
+# Offline Build Cache
 
-이 폴더는 내부망 반입용 오프라인 빌드 자원을 모으는 위치입니다.
+이 폴더는 내부망 오프라인 빌드를 위한 캐시를 보관합니다.
 
-## 폴더 역할
+## 사용 흐름
 
-- `gradle-home`: Gradle 플러그인과 Maven 의존성 캐시
-- `npm-cache`: npm 패키지 캐시
-- `nodejs`: Gradle Node Plugin이 내려받은 Node.js/npm 런타임
-- `npm`: Gradle Node Plugin npm 작업용 런타임 폴더
-- `gradle`: 선택 사항, Gradle 배포본을 직접 넣는 위치
+1. 외부망 PC에서 캐시 준비
 
-## 준비 흐름
+```powershell
+.\scripts\prepare-offline-bundle.ps1
+```
 
-1. 외부망 PC에서 `scripts/prepare-offline-bundle.ps1` 실행
-2. 생성/다운로드된 `offline` 폴더를 프로젝트와 함께 내부망으로 반입
-3. 내부망 PC에서 `scripts/build-offline-war.ps1` 실행
+2. 프로젝트 전체를 내부망 PC로 이동
 
-운영 서버에는 Node.js 서버가 실행되지 않습니다. Node/npm은 WAR 빌드 단계에서만 사용됩니다.
+3. 내부망 PC에서 오프라인 빌드
+
+```powershell
+.\scripts\build-offline-jar.ps1
+```
+
+## 주요 캐시
+
+- `offline/gradle-home`: Gradle dependency cache
+- `offline/npm-cache`: npm package cache
+
+## 산출물
+
+- Frontend: `frontend/dist`
+- Backend: `backend/build/libs/governance-portal-backend.jar`

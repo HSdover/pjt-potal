@@ -1,0 +1,114 @@
+Governance Portal Nginx + Spring Boot JAR 배포 구성
+
+작성일: 2026-05-11
+
+1. 목적
+
+이 문서는 Governance Portal을 Nginx와 Spring Boot embedded Tomcat 실행 JAR 구조로 운영하기 위한 기준을 정리합니다.
+
+2. 운영 구조
+
+Client
+  -> Nginx
+     - Vue 정적 파일 서빙
+     - /api/* 요청을 Spring Boot로 reverse proxy
+     - /api-docs/*, /swagger-ui*, /actuator/* 요청을 Spring Boot로 reverse proxy
+  -> Spring Boot executable JAR
+     - embedded Tomcat
+     - 기본 포트 18080
+
+3. 산출물
+
+Frontend:
+
+- 빌드 명령: `npm.cmd run build`
+- 산출물: `frontend/dist`
+- 운영 배치 예시: `/var/www/governance-portal`
+
+Backend:
+
+- 빌드 명령: `.\gradlew.bat bootJar`
+- 산출물: `backend/build/libs/governance-portal-backend.jar`
+- 운영 배치 예시: `/opt/governance-portal/governance-portal-backend.jar`
+
+통합 빌드:
+
+```powershell
+.\scripts\build-production.ps1
+```
+
+4. Nginx 설정
+
+예시 파일:
+
+```text
+infra/nginx/governance-portal.conf
+```
+
+핵심 규칙:
+
+- `/assets/*`는 장기 캐시를 적용합니다.
+- `/api/*`는 `http://127.0.0.1:18080`으로 proxy합니다.
+- `/api-docs/*`, `/swagger-ui*`, `/actuator/*`도 Spring Boot로 proxy합니다.
+- 그 외 프론트 라우트는 `try_files $uri $uri/ /index.html`로 처리합니다.
+
+5. Spring Boot 실행
+
+예시 systemd 파일:
+
+```text
+infra/systemd/governance-portal.service
+```
+
+수동 실행 예:
+
+```bash
+SERVER_PORT=18080 java -jar /opt/governance-portal/governance-portal-backend.jar
+```
+
+6. 포트 정책
+
+- Nginx: 80 또는 443
+- Spring Boot: 127.0.0.1:18080
+
+Spring Boot 포트는 외부에 직접 노출하지 않는 것을 권장합니다.
+
+7. 운영 배치 예시
+
+```text
+/var/www/governance-portal/
+  index.html
+  assets/
+
+/opt/governance-portal/
+  governance-portal-backend.jar
+```
+
+8. 확인 절차
+
+Backend:
+
+```bash
+curl http://127.0.0.1:18080/actuator/health
+```
+
+Nginx 경유:
+
+```bash
+curl http://localhost/actuator/health
+curl http://localhost/api/catalog/metadata
+```
+
+브라우저:
+
+- `http://<host>/`
+- `http://<host>/metadata`
+- `http://<host>/lineage`
+- `http://<host>/swagger-ui.html`
+
+9. 주의사항
+
+- Vue 정적 파일은 Spring Boot JAR에 포함하지 않습니다.
+- Vue 새로고침 처리는 Nginx `try_files`가 담당합니다.
+- Spring Boot에는 `server.forward-headers-strategy=framework`를 설정해 reverse proxy 헤더를 인식하게 합니다.
+- 운영 DB를 사용할 경우 `GOVERNANCE_DATASOURCE_URL`, `GOVERNANCE_DATASOURCE_USERNAME`, `GOVERNANCE_DATASOURCE_PASSWORD`를 반드시 외부 환경 변수로 주입합니다.

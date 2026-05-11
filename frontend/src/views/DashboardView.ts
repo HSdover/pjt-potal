@@ -1,9 +1,9 @@
-import type { LineageFlowItem } from "./LineageView";
-import type { MetadataCatalogItem } from "./MetadataView";
-import type { SourceSampleItem } from "./SourceSampleView";
-import { fetchLineage } from "./LineageView";
-import { fetchMetadata } from "./MetadataView";
-import { fetchSourceSample } from "./SourceSampleView";
+import { fetchLineage } from "@/features/lineage/api";
+import type { LineageFlowItem } from "@/features/lineage/types";
+import { fetchMetadata } from "@/features/metadata/api";
+import type { MetadataCatalogItem } from "@/features/metadata/types";
+import { fetchSourceSample } from "@/features/source-sample/api";
+import type { SourceSampleItem } from "@/features/source-sample/types";
 
 export type DashboardData = {
   metadata: MetadataCatalogItem[];

@@ -5,7 +5,7 @@
 ### CSVREAD 경로 안정화
 - 대상: `backend/src/main/resources/data.sql`
 - 내용: 현재 H2 초기 데이터 적재가 `../data/processed/hira/...` 상대 경로에 의존함.
-- 개선 방향: 실행 위치가 바뀌는 JEUS/WAR 환경에서는 경로가 깨질 수 있으므로, 개발용 H2 프로파일과 운영용 DB 초기화 방식을 분리 검토.
+- 개선 방향: 실행 위치가 바뀌는 systemd/JAR 운영 환경에서는 상대 경로가 깨질 수 있으므로, 개발용 H2 프로파일과 운영용 DB 초기화 방식을 분리 검토.
 - 우선순위: 중간
 
 ### API 응답 에러 처리 강화
@@ -26,8 +26,8 @@
 - 개선 방향: Oracle 호환 SQL 기준 정리, 프로파일별 datasource 설정, 초기 데이터 적재 방식 분리.
 - 우선순위: 중간
 
-### Gradle 프론트 빌드 동시 실행 충돌 방지
-- 대상: `backend/build.gradle`
-- 내용: 프론트 `npm run build`와 Gradle `nodeSetup`이 동시에 실행되면 `node.exe` 파일 잠금 충돌이 발생한 적 있음.
-- 개선 방향: 로컬 작업 가이드에 동시 실행 금지 명시 또는 Gradle Node 설정에서 재설치/삭제 동작 최소화 검토.
+### 운영 빌드 산출물 배치 검증
+- 대상: `scripts/build-production.ps1`, `infra/nginx/governance-portal.conf`
+- 내용: 프론트 정적 파일과 백엔드 JAR가 분리 산출되므로 운영 서버 배치 경로가 Nginx/systemd 설정과 일치해야 함.
+- 개선 방향: 배포 자동화 시 `frontend/dist` 복사 경로와 `governance-portal-backend.jar` 배치 경로를 검증하는 단계 추가.
 - 우선순위: 낮음

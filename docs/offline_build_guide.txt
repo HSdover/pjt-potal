@@ -1,95 +1,75 @@
-Governance Portal 내부망 오프라인 빌드 가이드
-작성일: 2026-04-28
-수정일: 2026-05-06
+Governance Portal 오프라인 빌드 가이드
 
-1. 목표
+작성일: 2026-05-11
 
-- 인터넷 연결이 없는 내부망 PC에서 최종 WAR를 빌드할 수 있도록 외부망 PC에서 필요한 캐시를 미리 준비합니다.
-- 최종 운영 배포 산출물은 `backend\build\libs\governance-portal-backend.war` 하나입니다.
-- 운영 서버에서는 Node.js 서버를 실행하지 않습니다.
-- Node.js/npm은 Vue 소스를 `frontend\dist` 정적 파일로 빌드하는 과정에서만 사용합니다.
+1. 목적
 
-2. 오프라인 구성 요소
+인터넷 연결이 없는 내부망 PC에서 Vue 정적 파일과 Spring Boot 실행 JAR를 빌드할 수 있도록 외부망 PC에서 필요한 캐시를 미리 준비합니다.
 
-- `offline\gradle-home`
-  - Gradle plugin, Maven 의존성, Spring Boot 의존성 캐시를 저장합니다.
-- `offline\npm-cache`
-  - npm 패키지 캐시를 저장합니다.
-- `offline\nodejs`
-  - Gradle Node Plugin이 내려받는 Node.js 배포본 작업 디렉터리입니다.
-- `offline\npm`
-  - Gradle Node Plugin의 npm 작업 디렉터리입니다.
-- `offline\gradle`
-  - 선택 사항입니다. 여기에 `bin\gradle.bat`가 있으면 스크립트가 시스템 Gradle보다 우선 사용합니다.
-- `scripts\prepare-offline-bundle.ps1`
-  - 외부망 PC에서 실행해 오프라인 빌드에 필요한 캐시를 채웁니다.
-- `scripts\build-offline-war.ps1`
-  - 내부망 PC에서 `--offline` 모드로 WAR를 빌드합니다.
+2. 최종 산출물
 
-3. 외부망 PC에서 준비
+- Frontend: `frontend/dist`
+- Backend: `backend/build/libs/governance-portal-backend.jar`
 
-인터넷 접근이 가능한 빌드 PC에서 실행합니다.
+3. 외부망 PC 준비
+
+외부망 PC에서 다음 명령을 실행합니다.
 
 ```powershell
-cd <외부망 경로>\governance-portal
 .\scripts\prepare-offline-bundle.ps1
 ```
 
-이 스크립트는 다음 작업을 수행합니다.
+이 명령은 다음 작업을 수행합니다.
 
-- `offline\gradle-home` 디렉터리를 생성합니다.
-- `backend` 폴더에서 Gradle `clean bootWar`를 실행합니다.
-- Gradle plugin과 Maven 의존성을 `offline\gradle-home`에 캐시합니다.
-- Gradle Node Plugin이 Node.js/npm을 준비합니다.
-- 프론트엔드 `npm install`과 `npm run build`를 Gradle 빌드 과정에서 실행합니다.
-- `backend\build\libs\governance-portal-backend.war`를 생성합니다.
+- `frontend` 의존성을 npm cache에 준비합니다.
+- `frontend/dist` 빌드를 검증합니다.
+- Gradle dependency cache를 `offline/gradle-home`에 준비합니다.
+- `backend/build/libs/governance-portal-backend.jar` 빌드를 검증합니다.
 
-4. 내부망 반입 항목
+4. 내부망 이동
 
-프로젝트 폴더 전체를 내부망으로 반입합니다.
+프로젝트 폴더 전체를 내부망 PC로 복사합니다.
 
-- `backend`
+반드시 함께 이동해야 하는 폴더:
+
+- `offline/gradle-home`
+- `offline/npm-cache`
 - `frontend`
-- `docs`
-- `scripts`
-- `offline`
+- `backend`
 - `data`
-- `README.md`
 
-특히 `offline` 폴더는 반드시 함께 반입해야 합니다.
+5. 내부망 빌드
 
-5. 내부망 PC에서 빌드
+내부망 PC에서 다음 명령을 실행합니다.
 
 ```powershell
-cd <내부망 경로>\governance-portal
-.\scripts\build-offline-war.ps1
+.\scripts\build-offline-jar.ps1
 ```
 
-이 스크립트는 다음 작업을 수행합니다.
+이 명령은 npm과 Gradle을 offline mode로 실행합니다.
 
-- `offline\gradle-home` 존재 여부를 확인합니다.
-- Gradle을 `--offline` 모드로 실행합니다.
-- `offline\gradle\bin\gradle.bat`가 있으면 해당 Gradle을 우선 사용하고, 없으면 PATH의 `gradle`을 사용합니다.
-- Gradle user home을 `offline\gradle-home`으로 지정합니다.
-- `backend` 폴더에서 `bootWar`를 실행합니다.
-- 최종 WAR를 `backend\build\libs\governance-portal-backend.war`에 생성합니다.
+6. 운영 배치
 
-6. Gradle 실행 파일 기준
-
-- 내부망 PC에 Gradle이 설치되어 있고 PATH에 등록되어 있으면 그대로 사용할 수 있습니다.
-- Gradle 배포본을 프로젝트에 포함하려면 다음 구조로 둡니다.
+Frontend:
 
 ```text
-offline\gradle\bin\gradle.bat
-offline\gradle\lib\...
+frontend/dist -> /var/www/governance-portal
 ```
 
-- 스크립트는 `offline\gradle\bin\gradle.bat`가 있으면 이를 우선 사용합니다.
+Backend:
 
-7. 주의 사항
+```text
+backend/build/libs/governance-portal-backend.jar -> /opt/governance-portal/governance-portal-backend.jar
+```
 
-- 외부망 준비 PC와 내부망 빌드 PC의 OS와 CPU 아키텍처를 맞추는 것이 안전합니다.
-- `package.json`, `package-lock.json`, `build.gradle`, `settings.gradle`이 바뀌면 외부망에서 `prepare-offline-bundle.ps1`을 다시 실행해 캐시를 갱신해야 합니다.
-- 오프라인 빌드는 필요한 npm 또는 Maven 패키지가 하나라도 캐시되어 있지 않으면 실패합니다.
-- WAR 파일만 JEUS 9에 배포하는 경우 운영 서버에는 Gradle, Node.js, npm이 필요하지 않습니다.
-- 현재 빌드는 Vue 정적 파일을 WAR 안에 포함하므로 WebtoB는 별도 정적 파일 루트를 운영하지 않아도 됩니다.
+7. 검증
+
+```powershell
+Test-Path frontend\dist\index.html
+Test-Path backend\build\libs\governance-portal-backend.jar
+```
+
+8. 참고
+
+- Nginx 설정 예시는 `infra/nginx/governance-portal.conf`를 사용합니다.
+- systemd 서비스 예시는 `infra/systemd/governance-portal.service`를 사용합니다.

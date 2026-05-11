@@ -1,0 +1,3 @@
+app:
+  frontend-dev-server:
+    enabled: true

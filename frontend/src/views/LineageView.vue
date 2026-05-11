@@ -4,12 +4,9 @@ import { AgGridVue } from "ag-grid-vue3";
 import { ElButton, ElCard, ElDatePicker, ElInput, ElOption, ElSelect } from "element-plus";
 import { Search } from "@element-plus/icons-vue";
 import LineageFlow from "@/components/LineageFlow.vue";
-import {
-  defaultColDef,
-  fetchLineage,
-  lineageColumnDefs,
-  type LineageFlowItem,
-} from "./LineageView";
+import { fetchLineage } from "@/features/lineage/api";
+import { lineageColumns } from "@/features/lineage/columns";
+import type { LineageFlowItem } from "@/features/lineage/types";
 
 // 화면 상태 연결 영역
 // 기준: 리니지 데이터는 현재 화면에서만 사용하므로 화면 내부 ref로 관리한다.
@@ -19,6 +16,13 @@ const dateRange = ref<[Date, Date] | null>(null);
 const transformType = ref("");
 const searchKeyword = ref("");
 const searchText = ref("");
+
+// [9. AG Grid 표준 래퍼] 기존 리니지 화면은 그래프 특화 화면이라 기본 컬럼만 공통 상수로 둔다.
+const defaultColDef = {
+  sortable: true,
+  filter: true,
+  resizable: true,
+};
 
 onMounted(async () => {
   loading.value = true;
@@ -80,7 +84,7 @@ function search() {
           <AgGridVue
             class="h-full w-full"
             :row-data="lineage"
-            :column-defs="lineageColumnDefs"
+            :column-defs="lineageColumns"
             :default-col-def="defaultColDef"
             :quick-filter-text="searchText"
             animate-rows

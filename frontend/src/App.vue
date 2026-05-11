@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { useRoute, useRouter, RouterView } from "vue-router";
+import { RouterView, useRoute, useRouter } from "vue-router";
 import { ElMenu, ElMenuItem } from "element-plus";
 
 const route = useRoute();
@@ -15,6 +15,7 @@ function handleSelect(key: string) {
 
 <template>
   <div class="min-h-screen bg-slate-50">
+    <!-- [11. 레이아웃 및 화면 스타일 표준] SI 포털형 상단 메뉴 레이아웃의 현재 기준이다. -->
     <header class="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-sm">
       <div class="mx-auto flex max-w-screen-2xl items-center px-6">
         <div class="mr-6 shrink-0">
@@ -28,6 +29,7 @@ function handleSelect(key: string) {
           class="flex-1"
           @select="handleSelect"
         >
+          <!-- [12. 메뉴, 라우터, 권한 표준] 메뉴 항목은 라우트 기준과 동일한 경로를 사용한다. -->
           <ElMenuItem index="/">대시보드</ElMenuItem>
           <ElMenuItem index="/metadata">메타데이터</ElMenuItem>
           <ElMenuItem index="/source-sample">원천 샘플</ElMenuItem>
