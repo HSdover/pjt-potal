@@ -1,8 +1,8 @@
 import type { ColDef } from "ag-grid-community";
-import type { MetadataCatalogItem } from "./types";
+import type { MetadataItem } from "./types";
 
 // [6. 업무 화면 작성 공식] 그리드 컬럼은 화면 SFC에서 분리해 업무별 columns.ts에 둔다.
-export const metadataColumns: ColDef<MetadataCatalogItem>[] = [
+export const metadataColumns: ColDef<MetadataItem>[] = [
   { field: "datasetName", headerName: "데이터명", minWidth: 220, flex: 1.2 },
   { field: "datasetType", headerName: "유형", width: 140 },
   { field: "sourceName", headerName: "출처", width: 150 },

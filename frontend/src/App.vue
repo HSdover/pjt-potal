@@ -2,11 +2,21 @@
 import { computed } from "vue";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import { ElMenu, ElMenuItem } from "element-plus";
+import { hasPermission } from "@/shared/auth/permissions";
 
 const route = useRoute();
 const router = useRouter();
 
 const activeMenu = computed(() => route.path);
+const menuItems = computed(() =>
+  router.getRoutes()
+    .filter((item) => item.meta.menu && hasPermission(item.meta.auth as string | string[] | undefined))
+    .sort((left, right) => Number(left.meta.order ?? 0) - Number(right.meta.order ?? 0))
+    .map((item) => ({
+      path: item.path,
+      title: String(item.meta.title ?? item.name ?? item.path),
+    })),
+);
 
 function handleSelect(key: string) {
   router.push(key);
@@ -29,12 +39,10 @@ function handleSelect(key: string) {
           class="flex-1"
           @select="handleSelect"
         >
-          <!-- [12. 메뉴, 라우터, 권한 표준] 메뉴 항목은 라우트 기준과 동일한 경로를 사용한다. -->
-          <ElMenuItem index="/">대시보드</ElMenuItem>
-          <ElMenuItem index="/metadata">메타데이터</ElMenuItem>
-          <ElMenuItem index="/source-sample">원천 샘플</ElMenuItem>
-          <ElMenuItem index="/lineage">데이터 리니지</ElMenuItem>
-          <ElMenuItem index="/table-detail-sample">테이블 상세 샘플</ElMenuItem>
+          <!-- [12. 메뉴, 라우터, 권한 표준] 메뉴 항목은 라우트 meta 설정에서 생성한다. -->
+          <ElMenuItem v-for="item in menuItems" :key="item.path" :index="item.path">
+            {{ item.title }}
+          </ElMenuItem>
         </ElMenu>
       </div>
     </header>

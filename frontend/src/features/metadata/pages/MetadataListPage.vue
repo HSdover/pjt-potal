@@ -9,10 +9,10 @@ import GridPageLayout from "@/components/GridPageLayout.vue";
 import type { ListRequest, ListSort } from "@/shared/types/list";
 import { fetchMetadataList } from "../api";
 import { metadataColumns } from "../columns";
-import type { MetadataCatalogItem, MetadataSearchFilter } from "../types";
+import type { MetadataItem, MetadataSearchFilter } from "../types";
 
-const rows = ref<MetadataCatalogItem[]>([]);
-const selected = ref<MetadataCatalogItem | null>(null);
+const rows = ref<MetadataItem[]>([]);
+const selected = ref<MetadataItem | null>(null);
 const loading = ref(false);
 const totalCount = ref(0);
 
@@ -46,6 +46,7 @@ async function load() {
 
 function search() {
   request.pageNo = 1;
+  selected.value = null;
   void load();
 }
 
@@ -60,24 +61,26 @@ function reset() {
 
 function onPageChange(pageNo: number) {
   request.pageNo = pageNo;
+  selected.value = null;
   void load();
 }
 
 function onPageSizeChange(pageSize: number) {
   request.pageSize = pageSize;
   request.pageNo = 1;
+  selected.value = null;
   void load();
 }
 
 function onSortChange(sort: ListSort[]) {
   request.sort = sort;
   request.pageNo = 1;
+  selected.value = null;
   void load();
 }
 
-function selectRow(row: unknown) {
-  const item = row as MetadataCatalogItem;
-  selected.value = selected.value?.metadataId === item.metadataId ? null : item;
+function selectRow(row: MetadataItem) {
+  selected.value = selected.value?.metadataId === row.metadataId ? null : row;
 }
 
 onMounted(load);
@@ -95,9 +98,6 @@ onMounted(load);
           <ElOption label="원천 파일" value="원천 파일" />
           <ElOption label="샘플 파일" value="샘플 파일" />
           <ElOption label="원천 샘플 테이블" value="원천 샘플 테이블" />
-          <ElOption label="TABLE" value="TABLE" />
-          <ElOption label="FILE" value="FILE" />
-          <ElOption label="SCREEN" value="SCREEN" />
         </ElSelect>
         <ElInput
           v-model="request.filters.keyword"

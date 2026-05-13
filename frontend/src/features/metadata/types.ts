@@ -1,4 +1,4 @@
-export type MetadataCatalogItem = {
+export type MetadataItem = {
   metadataId: number;
   datasetName: string;
   datasetType: string;

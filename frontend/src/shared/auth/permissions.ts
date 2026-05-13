@@ -6,7 +6,7 @@ export const samplePermissions = new Set([
   "METADATA_SAVE",
   "SOURCE_SAMPLE_READ",
   "LINEAGE_READ",
-  "TABLE_DETAIL_READ",
+  "SAMPLE_READ",
 ]);
 
 // [12. 메뉴, 라우터, 권한 표준] 샘플 템플릿은 권한 판정 진입점을 먼저 고정한다.

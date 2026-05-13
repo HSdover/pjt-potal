@@ -2,9 +2,8 @@
 
 프로젝트 진행 중 발견되는 개선사항을 영역별로 기록합니다.
 
-- `frontend.md`: Vue, AG Grid, 라우터, 화면 구조, UI/UX 관련 개선사항
-- `frontend-si-template.md`: SI 프로젝트 투입 개발자를 위한 프론트엔드 템플릿화 기획
-- `backend.md`: Spring Boot, H2/DB, API, Gradle/JAR 빌드 관련 개선사항
+- `frontend-si-template.md`: SI 프로젝트 투입 개발자를 위한 프론트엔드 템플릿화 기획과 남은 작업
+- `frontend-si-template-completed.md`: 프론트엔드 템플릿화 관련 완료 내역과 검증 기록
 
 ## 기록 기준
 

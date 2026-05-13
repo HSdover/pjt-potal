@@ -1,4 +1,4 @@
-INSERT INTO metadata_catalog (
+INSERT INTO metadata_dataset (
     dataset_name,
     dataset_type,
     source_name,

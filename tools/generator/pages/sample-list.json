@@ -1,0 +1,20 @@
+{
+  "feature": "sample-list",
+  "type": "search-grid",
+  "title": "샘플 목록",
+  "description": "샘플 데이터를 검색하고 조회합니다.",
+  "auth": "SAMPLE_READ",
+  "apiPath": "/api/samples/search",
+  "backend": {
+    "packageName": "sample",
+    "className": "Sample",
+    "tableName": "sample",
+    "idColumn": "sample_id",
+    "fields": [
+      { "name": "id", "type": "Long", "column": "sample_id" },
+      { "name": "name", "type": "String", "column": "sample_name" },
+      { "name": "description", "type": "String", "column": "description" }
+    ],
+    "keywordColumns": ["sample_name", "description"]
+  }
+}

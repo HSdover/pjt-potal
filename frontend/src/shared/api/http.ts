@@ -7,6 +7,10 @@ type HttpOptions = {
   headers?: HeadersInit;
 };
 
+type HttpBodyOptions = {
+  headers?: HeadersInit;
+};
+
 function appendParams(url: URL, params?: HttpParams) {
   if (!params) {
     return;
@@ -58,6 +62,22 @@ export const http = {
         Accept: "application/json",
         ...options.headers,
       },
+    });
+
+    return parseResponse<T>(response);
+  },
+
+  async post<T>(path: string, body?: unknown, options: HttpBodyOptions = {}) {
+    const url = new URL(path, window.location.origin);
+
+    const response = await fetch(url.pathname + url.search, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
 
     return parseResponse<T>(response);

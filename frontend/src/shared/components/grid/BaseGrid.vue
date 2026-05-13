@@ -1,12 +1,13 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="TRow extends object">
 import { computed } from "vue";
+import { ElPagination } from "element-plus";
 import { AgGridVue } from "ag-grid-vue3";
 import type { ColDef, RowClickedEvent, SortChangedEvent } from "ag-grid-community";
 import type { ListSort } from "@/shared/types/list";
 
 const props = withDefaults(defineProps<{
-  rows: unknown[];
-  columns: ColDef[];
+  rows: TRow[];
+  columns: ColDef<TRow>[];
   loading?: boolean;
   totalCount?: number;
   pageNo?: number;
@@ -23,14 +24,14 @@ const props = withDefaults(defineProps<{
 });
 
 const emit = defineEmits<{
-  rowClick: [row: unknown];
+  rowClick: [row: TRow];
   pageChange: [pageNo: number];
   pageSizeChange: [pageSize: number];
   sortChange: [sort: ListSort[]];
 }>();
 
 // [9. AG Grid 표준 래퍼] 화면별 중복되는 기본 컬럼 옵션을 공통화한다.
-const defaultColDef: ColDef = {
+const defaultColDef: ColDef<TRow> = {
   sortable: true,
   filter: true,
   resizable: true,
@@ -46,7 +47,7 @@ const currentPageSize = computed({
   set: (value) => emit("pageSizeChange", value),
 });
 
-function onRowClicked(event: RowClickedEvent) {
+function onRowClicked(event: RowClickedEvent<TRow>) {
   if (event.data) {
     emit("rowClick", event.data);
   }

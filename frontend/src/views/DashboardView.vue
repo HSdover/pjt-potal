@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { ElProgress, ElTag } from "element-plus";
+import { ElMessage, ElProgress, ElTag } from "element-plus";
 import LineageFlow from "@/components/LineageFlow.vue";
 import {
   fetchDashboardData,
@@ -15,6 +15,7 @@ const data = ref<DashboardData>({
   sourceSample: [],
 });
 const loading = ref(false);
+const loadFailed = ref(false);
 
 const totalRows = computed(() =>
   data.value.metadata.reduce((sum, item) => sum + item.rowCount, 0),
@@ -50,10 +51,17 @@ const lineageSteps = computed(() =>
   [...data.value.lineage].sort((a, b) => (a.sortOrder ?? a.flowId) - (b.sortOrder ?? b.flowId)),
 );
 
+const healthStatus = computed(() => loadFailed.value ? "오류" : "정상");
+const healthStatusType = computed<"success" | "danger">(() => loadFailed.value ? "danger" : "success");
+
 onMounted(async () => {
   loading.value = true;
+  loadFailed.value = false;
   try {
     data.value = await fetchDashboardData();
+  } catch (error) {
+    loadFailed.value = true;
+    ElMessage.error(error instanceof Error ? error.message : "대시보드 데이터 조회에 실패했습니다.");
   } finally {
     loading.value = false;
   }
@@ -69,7 +77,7 @@ onMounted(async () => {
             <h2 class="text-base font-bold text-slate-900">작업 현황</h2>
             <p class="mt-1 text-xs text-slate-500">카탈로그 샘플 기준 진행 상태</p>
           </div>
-          <ElTag type="success" effect="plain">정상</ElTag>
+          <ElTag :type="healthStatusType" effect="plain">{{ healthStatus }}</ElTag>
         </div>
 
         <div class="space-y-4">

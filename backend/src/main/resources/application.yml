@@ -6,7 +6,7 @@ spring:
       enabled: true
   datasource:
     url: ${GOVERNANCE_DATASOURCE_URL:jdbc:h2:mem:governance;MODE=Oracle;DB_CLOSE_DELAY=-1}
-    driver-class-name: org.h2.Driver
+    driver-class-name: ${GOVERNANCE_DATASOURCE_DRIVER:org.h2.Driver}
     username: ${GOVERNANCE_DATASOURCE_USERNAME:sa}
     password: ${GOVERNANCE_DATASOURCE_PASSWORD:}
   sql:
@@ -45,7 +45,11 @@ app:
     hira-csv-path: ${GOVERNANCE_HIRA_SAMPLE_CSV:}
   frontend-dev-server:
     enabled: ${GOVERNANCE_FRONTEND_DEV_SERVER_ENABLED:false}
+    restart: ${GOVERNANCE_FRONTEND_DEV_SERVER_RESTART:false}
+    build-before-start: ${GOVERNANCE_FRONTEND_DEV_SERVER_BUILD_BEFORE_START:false}
     port: ${GOVERNANCE_FRONTEND_DEV_SERVER_PORT:5173}
     working-directory: ${GOVERNANCE_FRONTEND_DEV_SERVER_DIR:../frontend}
     command: ${GOVERNANCE_FRONTEND_DEV_SERVER_COMMAND:npm.cmd}
     args: ${GOVERNANCE_FRONTEND_DEV_SERVER_ARGS:run,dev}
+    build-command: ${GOVERNANCE_FRONTEND_DEV_SERVER_BUILD_COMMAND:npm.cmd}
+    build-args: ${GOVERNANCE_FRONTEND_DEV_SERVER_BUILD_ARGS:run,build}

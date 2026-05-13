@@ -96,7 +96,7 @@ Nginx 경유:
 
 ```bash
 curl http://localhost/actuator/health
-curl http://localhost/api/catalog/metadata
+curl http://localhost/api/metadata
 ```
 
 브라우저:
