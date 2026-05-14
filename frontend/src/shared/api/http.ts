@@ -82,4 +82,34 @@ export const http = {
 
     return parseResponse<T>(response);
   },
+
+  async put<T>(path: string, body?: unknown, options: HttpBodyOptions = {}) {
+    const url = new URL(path, window.location.origin);
+
+    const response = await fetch(url.pathname + url.search, {
+      method: "PUT",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+
+    return parseResponse<T>(response);
+  },
+
+  async delete<T>(path: string, options: HttpBodyOptions = {}) {
+    const url = new URL(path, window.location.origin);
+
+    const response = await fetch(url.pathname + url.search, {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+        ...options.headers,
+      },
+    });
+
+    return parseResponse<T>(response);
+  },
 };

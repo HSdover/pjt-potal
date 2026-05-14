@@ -36,6 +36,11 @@ const router = createRouter({
       component: () => import("@/features/sample-list/pages/SampleListPage.vue"),
       meta: { title: "테스트페이지", menu: true, order: 50, auth: "SAMPLE_READ" },
     },
+    {
+      path: "/sample-list-jpa",
+      component: () => import("@/features/sample-list-jpa/pages/SampleListJpaPage.vue"),
+      meta: { title: "JPA 샘플", menu: true, order: 60, auth: "SAMPLE_JPA_READ" },
+    },
   ],
 });
 

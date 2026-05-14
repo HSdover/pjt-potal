@@ -7,6 +7,13 @@ export const samplePermissions = new Set([
   "SOURCE_SAMPLE_READ",
   "LINEAGE_READ",
   "SAMPLE_READ",
+  "SAMPLE_CREATE",
+  "SAMPLE_UPDATE",
+  "SAMPLE_DELETE",
+  "SAMPLE_JPA_READ",
+  "SAMPLE_JPA_CREATE",
+  "SAMPLE_JPA_UPDATE",
+  "SAMPLE_JPA_DELETE",
 ]);
 
 // [12. 메뉴, 라우터, 권한 표준] 샘플 템플릿은 권한 판정 진입점을 먼저 고정한다.

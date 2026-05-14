@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -29,6 +30,7 @@ import org.springframework.context.annotation.Configuration;
 public class FrontendDevServerRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(FrontendDevServerRunner.class);
+    private static final Duration STOP_TIMEOUT = Duration.ofSeconds(5);
 
     private final FrontendDevServerProperties properties;
     private Process process;
@@ -77,7 +79,6 @@ public class FrontendDevServerRunner implements ApplicationRunner {
             .redirectError(ProcessBuilder.Redirect.INHERIT);
 
         process = processBuilder.start();
-        Runtime.getRuntime().addShutdownHook(new Thread(this::stopProcess));
         waitUntilPortOpen(properties.getPort(), Duration.ofSeconds(20));
 
         log.info(
@@ -213,10 +214,23 @@ public class FrontendDevServerRunner implements ApplicationRunner {
     }
 
     private void runStopCommand(List<String> command, Long processId) throws IOException, InterruptedException {
-        log.info("Stopping frontend process {} with command '{}'.", processId, String.join(" ", command));
+        log.info("Stopping frontend process {}.", processId);
         Process stopProcess = new ProcessBuilder(command)
+            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+            .redirectError(ProcessBuilder.Redirect.DISCARD)
             .start();
-        stopProcess.waitFor(10, TimeUnit.SECONDS);
+        boolean completed = stopProcess.waitFor(STOP_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+        if (!completed) {
+            stopProcess.destroyForcibly();
+            log.warn("Timed out while stopping frontend process {}.", processId);
+            return;
+        }
+
+        if (stopProcess.exitValue() == 0) {
+            log.info("Stopped frontend process {}.", processId);
+        } else {
+            log.warn("Stop command for frontend process {} exited with code {}.", processId, stopProcess.exitValue());
+        }
     }
 
     private void waitUntilPortClosed(int port, Duration timeout) throws InterruptedException {
@@ -252,9 +266,33 @@ public class FrontendDevServerRunner implements ApplicationRunner {
         return System.getProperty("os.name", "").toLowerCase().contains("win");
     }
 
-    private void stopProcess() {
-        if (process != null && process.isAlive()) {
-            process.destroy();
+    @PreDestroy
+    void stopProcess() {
+        if (process == null || !process.isAlive()) {
+            return;
+        }
+
+        long processId = process.pid();
+        log.info("Stopping managed frontend dev server process {}.", processId);
+
+        try {
+            if (isWindows()) {
+                runStopCommand(List.of("taskkill", "/PID", Long.toString(processId), "/T", "/F"), processId);
+            } else {
+                process.destroy();
+                boolean completed = process.waitFor(STOP_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+                if (!completed) {
+                    process.destroyForcibly();
+                    log.warn("Forced frontend dev server process {} to stop.", processId);
+                }
+            }
+        } catch (InterruptedException interruptedException) {
+            Thread.currentThread().interrupt();
+            process.destroyForcibly();
+            log.warn("Interrupted while stopping frontend dev server process {}.", processId);
+        } catch (IOException exception) {
+            process.destroyForcibly();
+            log.warn("Failed to stop frontend dev server process {} with platform command.", processId, exception);
         }
     }
 }

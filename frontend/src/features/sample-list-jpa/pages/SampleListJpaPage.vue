@@ -9,17 +9,17 @@ import GridPageLayout from "@/components/GridPageLayout.vue";
 import type { ListRequest, ListSort } from "@/shared/types/list";
 import { createSample, deleteSample, fetchList, updateSample } from "../api";
 import { columns as gridColumns } from "../columns";
-import type { SampleListItem, SampleListSaveRequest, SampleListSearchFilter } from "../types";
+import type { SampleListJpaItem, SampleListJpaSaveRequest, SampleListJpaSearchFilter } from "../types";
 
-const rows = ref<SampleListItem[]>([]);
+const rows = ref<SampleListJpaItem[]>([]);
 const loading = ref(false);
 const saving = ref(false);
 const totalCount = ref(0);
-const selectedRow = ref<SampleListItem | null>(null);
+const selectedRow = ref<SampleListJpaItem | null>(null);
 const dialogVisible = ref(false);
 const dialogMode = ref<"create" | "update">("create");
 
-const request = reactive<ListRequest<SampleListSearchFilter>>({
+const request = reactive<ListRequest<SampleListJpaSearchFilter>>({
   pageNo: 1,
   pageSize: 20,
   sort: [],
@@ -28,13 +28,13 @@ const request = reactive<ListRequest<SampleListSearchFilter>>({
   },
 });
 
-const form = reactive<SampleListSaveRequest>({
+const form = reactive<SampleListJpaSaveRequest>({
   name: "",
   description: "",
 });
 
 const columns = computed(() => gridColumns);
-const dialogTitle = computed(() => (dialogMode.value === "create" ? "샘플 등록" : "샘플 수정"));
+const dialogTitle = computed(() => (dialogMode.value === "create" ? "JPA 샘플 등록" : "JPA 샘플 수정"));
 
 async function load() {
   loading.value = true;
@@ -85,7 +85,7 @@ function onSortChange(sort: ListSort[]) {
   void load();
 }
 
-function onRowClick(row: SampleListItem) {
+function onRowClick(row: SampleListJpaItem) {
   selectedRow.value = row;
 }
 
@@ -145,7 +145,7 @@ async function remove() {
   }
 
   try {
-    await ElMessageBox.confirm("선택한 샘플을 삭제하시겠습니까?", "삭제 확인", {
+    await ElMessageBox.confirm("선택한 JPA 샘플을 삭제하시겠습니까?", "삭제 확인", {
       confirmButtonText: "삭제",
       cancelButtonText: "취소",
       type: "warning",
@@ -167,7 +167,7 @@ onMounted(load);
 </script>
 
 <template>
-  <GridPageLayout title="샘플 목록" description="샘플 데이터를 검색하고 관리합니다.">
+  <GridPageLayout title="JPA 샘플 목록" description="JPA 기반 샘플 데이터를 검색하고 관리합니다.">
     <template #toolbar>
       <SearchPanel>
         <ElInput
@@ -180,11 +180,11 @@ onMounted(load);
         />
 
         <template #actions>
-          <AuthButton auth="SAMPLE_READ" @click="reset">초기화</AuthButton>
-          <AuthButton auth="SAMPLE_READ" type="primary" :icon="Search" @click="search">조회</AuthButton>
-          <AuthButton auth="SAMPLE_CREATE" type="success" :icon="Plus" @click="openCreateDialog">등록</AuthButton>
+          <AuthButton auth="SAMPLE_JPA_READ" @click="reset">초기화</AuthButton>
+          <AuthButton auth="SAMPLE_JPA_READ" type="primary" :icon="Search" @click="search">조회</AuthButton>
+          <AuthButton auth="SAMPLE_JPA_CREATE" type="success" :icon="Plus" @click="openCreateDialog">등록</AuthButton>
           <AuthButton
-            auth="SAMPLE_UPDATE"
+            auth="SAMPLE_JPA_UPDATE"
             type="warning"
             :icon="Edit"
             :disabled="!selectedRow"
@@ -192,7 +192,7 @@ onMounted(load);
           >
             수정
           </AuthButton>
-          <AuthButton auth="SAMPLE_DELETE" type="danger" :icon="Delete" :disabled="!selectedRow" @click="remove">
+          <AuthButton auth="SAMPLE_JPA_DELETE" type="danger" :icon="Delete" :disabled="!selectedRow" @click="remove">
             삭제
           </AuthButton>
         </template>
@@ -227,8 +227,21 @@ onMounted(load);
       </ElForm>
 
       <template #footer>
-        <AuthButton :auth="dialogMode === 'create' ? 'SAMPLE_CREATE' : 'SAMPLE_UPDATE'" :disabled="saving" @click="dialogVisible = false">취소</AuthButton>
-        <AuthButton :auth="dialogMode === 'create' ? 'SAMPLE_CREATE' : 'SAMPLE_UPDATE'" type="primary" :disabled="saving" @click="save">저장</AuthButton>
+        <AuthButton
+          :auth="dialogMode === 'create' ? 'SAMPLE_JPA_CREATE' : 'SAMPLE_JPA_UPDATE'"
+          :disabled="saving"
+          @click="dialogVisible = false"
+        >
+          취소
+        </AuthButton>
+        <AuthButton
+          :auth="dialogMode === 'create' ? 'SAMPLE_JPA_CREATE' : 'SAMPLE_JPA_UPDATE'"
+          type="primary"
+          :disabled="saving"
+          @click="save"
+        >
+          저장
+        </AuthButton>
       </template>
     </ElDialog>
   </GridPageLayout>

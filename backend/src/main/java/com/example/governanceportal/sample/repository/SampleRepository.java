@@ -9,9 +9,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 
 @Repository
 public class SampleRepository {
@@ -38,8 +41,8 @@ public class SampleRepository {
 
         return jdbcClient.sql("""
                 SELECT
-                    sample_id,
-                    sample_name,
+                    sample_id AS id,
+                    sample_name AS name,
                     description
                 FROM sample
                 """ + queryParts.where() + orderBy + """
@@ -50,6 +53,68 @@ public class SampleRepository {
             .param("pageSize", pageSize)
             .query(SampleItem.class)
             .list();
+    }
+
+    public Optional<SampleItem> findById(Long id) {
+        return jdbcClient.sql("""
+                SELECT
+                    sample_id AS id,
+                    sample_name AS name,
+                    description
+                FROM sample
+                WHERE sample_id = :id
+                """)
+            .param("id", id)
+            .query(SampleItem.class)
+            .optional();
+    }
+
+    public Long create(String name, String description) {
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcClient.sql("""
+                INSERT INTO sample (
+                    sample_name,
+                    description
+                )
+                VALUES (
+                    :name,
+                    :description
+                )
+                """)
+            .param("name", name)
+            .param("description", description)
+            .update(keyHolder, "sample_id");
+
+        Number key = keyHolder.getKey();
+        if (key == null) {
+            throw new IllegalStateException("Failed to read generated sample_id.");
+        }
+
+        return key.longValue();
+    }
+
+    public boolean update(Long id, String name, String description) {
+        int affectedRows = jdbcClient.sql("""
+                UPDATE sample
+                SET
+                    sample_name = :name,
+                    description = :description
+                WHERE sample_id = :id
+                """)
+            .param("id", id)
+            .param("name", name)
+            .param("description", description)
+            .update();
+
+        return affectedRows > 0;
+    }
+
+    public boolean delete(Long id) {
+        int affectedRows = jdbcClient.sql("DELETE FROM sample WHERE sample_id = :id")
+            .param("id", id)
+            .update();
+
+        return affectedRows > 0;
     }
 
     private QueryParts buildWhere(SampleSearchFilter filters) {

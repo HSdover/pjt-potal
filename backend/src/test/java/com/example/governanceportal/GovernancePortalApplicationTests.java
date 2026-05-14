@@ -8,8 +8,12 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import org.springframework.http.MediaType;
 
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -83,5 +87,103 @@ class GovernancePortalApplicationTests {
             .andExpect(jsonPath("$.totalCount").value(1))
             .andExpect(jsonPath("$.pageNo").value(1))
             .andExpect(jsonPath("$.pageSize").value(10));
+    }
+
+    @Test
+    void sampleCrudWorks() throws Exception {
+        Integer id = mockMvc.perform(post("/api/samples")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "CRUD Sample",
+                      "description": "Created from test"
+                    }
+                    """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id", greaterThan(0)))
+            .andExpect(jsonPath("$.name").value("CRUD Sample"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\\\"id\\\":(\\d+).*", "$1")
+            .transform(Integer::valueOf);
+
+        mockMvc.perform(put("/api/samples/{id}", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "CRUD Sample Updated",
+                      "description": "Updated from test"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(id))
+            .andExpect(jsonPath("$.name").value("CRUD Sample Updated"));
+
+        mockMvc.perform(post("/api/samples/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "pageNo": 1,
+                      "pageSize": 10,
+                      "sort": [{"field": "id", "direction": "asc"}],
+                      "filters": {"keyword": "CRUD Sample Updated"}
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalCount").value(1))
+            .andExpect(jsonPath("$.rows[0].id", is(id)));
+
+        mockMvc.perform(delete("/api/samples/{id}", id))
+            .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void sampleJpaCrudWorks() throws Exception {
+        Integer id = mockMvc.perform(post("/api/samples-jpa")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "JPA CRUD Sample",
+                      "description": "Created from JPA test"
+                    }
+                    """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id", greaterThan(0)))
+            .andExpect(jsonPath("$.name").value("JPA CRUD Sample"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\\\"id\\\":(\\d+).*", "$1")
+            .transform(Integer::valueOf);
+
+        mockMvc.perform(put("/api/samples-jpa/{id}", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "JPA CRUD Sample Updated",
+                      "description": "Updated from JPA test"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(id))
+            .andExpect(jsonPath("$.name").value("JPA CRUD Sample Updated"));
+
+        mockMvc.perform(post("/api/samples-jpa/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "pageNo": 1,
+                      "pageSize": 10,
+                      "sort": [{"field": "id", "direction": "asc"}],
+                      "filters": {"keyword": "JPA CRUD Sample Updated"}
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalCount").value(1))
+            .andExpect(jsonPath("$.rows[0].id", is(id)));
+
+        mockMvc.perform(delete("/api/samples-jpa/{id}", id))
+            .andExpect(status().isNoContent());
     }
 }
