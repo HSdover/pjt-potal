@@ -9,6 +9,15 @@ spring:
     driver-class-name: ${GOVERNANCE_DATASOURCE_DRIVER:org.h2.Driver}
     username: ${GOVERNANCE_DATASOURCE_USERNAME:sa}
     password: ${GOVERNANCE_DATASOURCE_PASSWORD:}
+  data:
+    redis:
+      host: ${GOVERNANCE_REDIS_HOST:127.0.0.1}
+      port: ${GOVERNANCE_REDIS_PORT:6379}
+      database: ${GOVERNANCE_REDIS_DATABASE:0}
+      password: ${GOVERNANCE_REDIS_PASSWORD:}
+      timeout: ${GOVERNANCE_REDIS_TIMEOUT:2s}
+      repositories:
+        enabled: false
   sql:
     init:
       mode: ${GOVERNANCE_SQL_INIT_MODE:embedded}
@@ -17,7 +26,12 @@ spring:
       ddl-auto: none
     open-in-view: false
   cache:
-    type: simple
+    type: ${GOVERNANCE_CACHE_TYPE:simple}
+    redis:
+      time-to-live: ${GOVERNANCE_CACHE_REDIS_TTL:300s}
+      cache-null-values: false
+      key-prefix: "${GOVERNANCE_CACHE_REDIS_KEY_PREFIX:governance:}"
+      use-key-prefix: true
   h2:
     console:
       enabled: ${GOVERNANCE_H2_CONSOLE_ENABLED:true}
@@ -34,6 +48,9 @@ springdoc:
     path: /swagger-ui.html
 
 management:
+  health:
+    redis:
+      enabled: ${GOVERNANCE_REDIS_HEALTH_ENABLED:false}
   endpoints:
     web:
       exposure:

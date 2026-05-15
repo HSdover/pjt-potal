@@ -13,6 +13,7 @@ repositories {
 
 def projectRootDir = file("${rootDir}/..")
 def hiraSampleCsv = file("${projectRootDir}/data/processed/hira/hira_institution_open_status_sample_1000_h2.csv")
+def querydslVersion = "5.1.0"
 
 java {
     toolchain {
@@ -30,15 +31,20 @@ dependencies {
     implementation "org.springframework.boot:spring-boot-starter-actuator"
     implementation "org.springframework.boot:spring-boot-starter-cache"
     implementation "org.springframework.boot:spring-boot-starter-data-jpa"
+    implementation "org.springframework.boot:spring-boot-starter-data-redis"
     implementation "org.springframework.boot:spring-boot-starter-oauth2-resource-server"
     implementation "org.springframework.boot:spring-boot-starter-security"
     implementation "org.springframework.boot:spring-boot-starter-validation"
     implementation "org.springframework.boot:spring-boot-starter-web"
     implementation "org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.4"
     implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0"
+    implementation "com.querydsl:querydsl-jpa:${querydslVersion}:jakarta"
     implementation "com.oracle.oci.sdk:oci-java-sdk-common:3.50.2"
     compileOnly "org.projectlombok:lombok"
     runtimeOnly "com.h2database:h2"
+    annotationProcessor "com.querydsl:querydsl-apt:${querydslVersion}:jakarta"
+    annotationProcessor "jakarta.annotation:jakarta.annotation-api"
+    annotationProcessor "jakarta.persistence:jakarta.persistence-api"
     annotationProcessor "org.projectlombok:lombok"
     testImplementation "org.springframework.boot:spring-boot-starter-test"
     testImplementation "org.springframework.security:spring-security-test"

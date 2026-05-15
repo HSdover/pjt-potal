@@ -46,7 +46,8 @@ tools\generator\generate-feature.cmd --backend-only
 - `apiPath`: 목록 조회 API 경로입니다. 보통 `/api/{resource}/search` 형식을 사용합니다.
 - `backend.packageName`: `com.example.governanceportal` 아래에 생성할 Java 패키지 구간입니다.
 - `backend.className`: Java 클래스명 접두어입니다.
-- `backend.tableName`: 조회 대상 DB 테이블명입니다.
-- `backend.idColumn`: 기본 정렬 컬럼입니다.
-- `backend.fields`: 응답 필드와 SQL 컬럼 매핑입니다.
-- `backend.keywordColumns`: 키워드 검색에 포함할 SQL 컬럼 목록입니다.
+- `backend.tableName`: JPA 엔티티가 매핑될 DB 테이블명입니다.
+- `backend.idColumn`: `@Id` 필드에 매핑될 DB 컬럼명이며 기본 정렬 기준입니다.
+- `backend.fields`: Java 엔티티/DTO 필드명과 DB 컬럼 매핑입니다.
+- `backend.keywordFields`: QueryDSL 키워드 검색에 포함할 Java 필드명 목록입니다.
+- `backend.keywordColumns`: 기존 설정 호환용입니다. `fields[].column` 또는 `fields[].name`과 매칭해 QueryDSL 검색 필드로 변환합니다.

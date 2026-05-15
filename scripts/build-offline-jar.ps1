@@ -1,43 +1,39 @@
 $ErrorActionPreference = "Stop"
 
-$projectRoot = Resolve-Path "$PSScriptRoot\.."
+$projectRoot = (Resolve-Path "$PSScriptRoot\..").Path
 $backendDir = Join-Path $projectRoot "backend"
 $frontendDir = Join-Path $projectRoot "frontend"
 $offlineDir = Join-Path $projectRoot "offline"
 $gradleHome = Join-Path $offlineDir "gradle-home"
 $npmCache = Join-Path $offlineDir "npm-cache"
-$localGradle = Join-Path $offlineDir "gradle\bin\gradle.bat"
+$gradleWrapper = Join-Path $backendDir "gradlew.bat"
 
-if (!(Test-Path $gradleHome)) {
-    throw "Missing offline Gradle cache: $gradleHome"
-}
+. (Join-Path $PSScriptRoot "offline-build-tools.ps1")
 
-if (!(Test-Path $npmCache)) {
-    throw "Missing offline npm cache: $npmCache"
-}
-
-if (Test-Path $localGradle) {
-    $gradleCommand = $localGradle
-} else {
-    $gradleCommand = "gradle"
-}
+$npmCommand = Resolve-ProjectNpmCommand -OfflineDir $offlineDir -RequireLocal
+Assert-OfflinePath -Path $gradleWrapper -Message "Missing Gradle wrapper"
+Assert-OfflinePath -Path $gradleHome -Message "Missing offline Gradle cache"
+Assert-OfflinePath -Path (Join-Path $gradleHome "wrapper\dists") -Message "Missing cached Gradle wrapper distribution"
+Assert-OfflinePath -Path $npmCache -Message "Missing offline npm cache"
+Assert-OfflinePath -Path (Join-Path $npmCache "_cacache") -Message "Missing npm content cache"
 
 Write-Host "Building frontend static files and Spring Boot JAR in offline mode..."
 Write-Host "Project: $projectRoot"
+Write-Host "npm command: $npmCommand"
 Write-Host "Gradle user home: $gradleHome"
-Write-Host "Gradle command: $gradleCommand"
+Write-Host "Gradle wrapper: $gradleWrapper"
 
 Push-Location $frontendDir
 try {
-    npm.cmd ci --offline --cache $npmCache
-    npm.cmd run build
+    Invoke-OfflineCommand $npmCommand ci --offline --cache $npmCache
+    Invoke-OfflineCommand $npmCommand run build
 } finally {
     Pop-Location
 }
 
 Push-Location $backendDir
 try {
-    & $gradleCommand --offline --gradle-user-home $gradleHome bootJar
+    Invoke-OfflineCommand $gradleWrapper --offline --gradle-user-home $gradleHome --no-daemon bootJar
 } finally {
     Pop-Location
 }

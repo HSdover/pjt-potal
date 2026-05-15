@@ -1,10 +1,11 @@
 Governance Portal 오프라인 빌드 가이드
 
-작성일: 2026-05-11
+작성일: 2026-05-15
 
 1. 목적
 
 인터넷 연결이 없는 내부망 PC에서 Vue 정적 파일과 Spring Boot 실행 JAR를 빌드할 수 있도록 외부망 PC에서 필요한 캐시를 미리 준비합니다.
+내부망 빌드는 PC에 설치된 Node/npm/Gradle이 아니라 프로젝트 하위의 Node.js 배포본, npm cache, Gradle Wrapper cache를 사용합니다.
 
 2. 최종 산출물
 
@@ -22,8 +23,10 @@ Governance Portal 오프라인 빌드 가이드
 이 명령은 다음 작업을 수행합니다.
 
 - `frontend` 의존성을 npm cache에 준비합니다.
+- 준비된 npm cache로 `npm ci --offline`을 실행해 오프라인 설치 가능 여부를 검증합니다.
 - `frontend/dist` 빌드를 검증합니다.
 - Gradle dependency cache를 `offline/gradle-home`에 준비합니다.
+- 준비된 Gradle cache로 `gradlew.bat --offline`을 실행해 오프라인 빌드 가능 여부를 검증합니다.
 - `backend/build/libs/governance-portal-backend.jar` 빌드를 검증합니다.
 
 4. 내부망 이동
@@ -34,9 +37,12 @@ Governance Portal 오프라인 빌드 가이드
 
 - `offline/gradle-home`
 - `offline/npm-cache`
+- `offline/nodejs`
 - `frontend`
 - `backend`
 - `data`
+
+`offline` 하위 캐시는 `.gitignore` 대상입니다. 내부망 PC에서 git clone만 수행하면 캐시가 빠지므로, 프로젝트 폴더 전체를 복사하거나 offline 폴더를 별도 압축 파일로 함께 전달해야 합니다.
 
 5. 내부망 빌드
 
@@ -47,6 +53,8 @@ Governance Portal 오프라인 빌드 가이드
 ```
 
 이 명령은 npm과 Gradle을 offline mode로 실행합니다.
+프론트 빌드는 `offline/nodejs/node-*-win-x64/npm.cmd`를 사용하고, 백엔드 빌드는 `backend/gradlew.bat --gradle-user-home offline/gradle-home`을 사용합니다.
+따라서 내부망 PC에 별도 Node/npm/Gradle이 설치되어 있어도 오프라인 빌드에는 사용되지 않습니다.
 
 6. 운영 배치
 

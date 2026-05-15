@@ -101,6 +101,7 @@ function buildBackendOptions(spec, config, args, dryRun) {
     tableName: backend.tableName,
     idColumn: backend.idColumn,
     fields: backend.fields,
+    keywordFields: backend.keywordFields,
     keywordColumns: backend.keywordColumns,
     force: args.force || config.force === true || spec.force === true || backend.force === true,
     dryRun,

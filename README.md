@@ -154,6 +154,15 @@ H2 콘솔 접속 정보:
 - `GOVERNANCE_DATASOURCE_PASSWORD`: DB 비밀번호.
 - `GOVERNANCE_SQL_INIT_MODE`: SQL 초기화 모드. 기본값은 `embedded`.
 - `GOVERNANCE_H2_CONSOLE_ENABLED`: H2 console 사용 여부. 기본값은 `true`.
+- `GOVERNANCE_CACHE_TYPE`: Spring cache 구현. 기본값은 `simple`, Redis 사용 시 `redis`.
+- `GOVERNANCE_CACHE_REDIS_TTL`: Redis cache TTL. 기본값은 `300s`.
+- `GOVERNANCE_CACHE_REDIS_KEY_PREFIX`: Redis cache key prefix. 기본값은 `governance:`.
+- `GOVERNANCE_REDIS_HOST`: Redis host. 기본값은 `127.0.0.1`.
+- `GOVERNANCE_REDIS_PORT`: Redis port. 기본값은 `6379`.
+- `GOVERNANCE_REDIS_DATABASE`: Redis database index. 기본값은 `0`.
+- `GOVERNANCE_REDIS_PASSWORD`: Redis password.
+- `GOVERNANCE_REDIS_TIMEOUT`: Redis connection timeout. 기본값은 `2s`.
+- `GOVERNANCE_REDIS_HEALTH_ENABLED`: Actuator Redis health check 사용 여부. 기본값은 `false`.
 - `GOVERNANCE_SAMPLE_DATA_ENABLED`: HIRA 샘플 CSV 자동 적재 여부. 기본값은 `true`.
 - `GOVERNANCE_HIRA_SAMPLE_CSV`: 샘플 CSV 파일 경로.
 - `GOVERNANCE_FRONTEND_DEV_SERVER_ENABLED`: 백엔드 시작 시 프론트 dev server 실행 여부. 기본값은 `false`, `local` profile은 `true`.
@@ -168,17 +177,25 @@ H2 콘솔 접속 정보:
 
 ## 오프라인 빌드
 
+오프라인 빌드는 내부망 PC의 `PATH`에 설치된 Node/npm/Gradle에 의존하지 않습니다.
+프론트 빌드는 `offline/nodejs/node-*-win-x64/npm.cmd`를 사용하고, 백엔드 빌드는 `backend/gradlew.bat`와 `offline/gradle-home`을 사용합니다.
+
 인터넷이 되는 PC에서 캐시를 준비합니다.
 
 ```powershell
 .\scripts\prepare-offline-bundle.ps1
 ```
 
+이 단계는 npm/Gradle 의존성을 캐시에 내려받은 뒤, 같은 캐시로 오프라인 빌드가 가능한지 한 번 더 검증합니다.
+
 프로젝트 전체를 내부망으로 옮긴 뒤 실행합니다.
 
 ```powershell
 .\scripts\build-offline-jar.ps1
 ```
+
+내부망으로 옮길 때는 `offline/gradle-home`, `offline/npm-cache`, `offline/nodejs`, `frontend`, `backend`, `data`를 함께 복사해야 합니다.
+`offline` 하위 캐시는 `.gitignore` 대상이므로 git clone만으로는 전달되지 않습니다.
 
 ## 참고 문서
 

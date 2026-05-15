@@ -15,6 +15,6 @@
       { "name": "name", "type": "String", "column": "sample_name" },
       { "name": "description", "type": "String", "column": "description" }
     ],
-    "keywordColumns": ["sample_name", "description"]
+    "keywordFields": ["name", "description"]
   }
 }

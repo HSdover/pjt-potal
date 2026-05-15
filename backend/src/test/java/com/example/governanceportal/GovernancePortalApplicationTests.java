@@ -186,4 +186,67 @@ class GovernancePortalApplicationTests {
         mockMvc.perform(delete("/api/samples-jpa/{id}", id))
             .andExpect(status().isNoContent());
     }
+
+    @Test
+    void sampleJpaSearchSupportsEmptyKeywordAndSort() throws Exception {
+        Integer firstId = null;
+        Integer secondId = null;
+
+        try {
+            firstId = mockMvc.perform(post("/api/samples-jpa")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                          "name": "QueryDSL Sort A",
+                          "description": "Created for empty keyword search"
+                        }
+                        """))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString()
+                .replaceAll(".*\\\"id\\\":(\\d+).*", "$1")
+                .transform(Integer::valueOf);
+
+            secondId = mockMvc.perform(post("/api/samples-jpa")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                          "name": "QueryDSL Sort B",
+                          "description": "Created for empty keyword search"
+                        }
+                        """))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString()
+                .replaceAll(".*\\\"id\\\":(\\d+).*", "$1")
+                .transform(Integer::valueOf);
+
+            mockMvc.perform(post("/api/samples-jpa/search")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                          "pageNo": 1,
+                          "pageSize": 2,
+                          "sort": [{"field": "name", "direction": "desc"}],
+                          "filters": {"keyword": ""}
+                        }
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rows.length()").value(2))
+                .andExpect(jsonPath("$.rows[0].name").value("QueryDSL Sort B"))
+                .andExpect(jsonPath("$.rows[1].name").value("QueryDSL Sort A"))
+                .andExpect(jsonPath("$.totalCount", greaterThan(0)))
+                .andExpect(jsonPath("$.pageNo").value(1))
+                .andExpect(jsonPath("$.pageSize").value(2));
+        } finally {
+            if (secondId != null) {
+                mockMvc.perform(delete("/api/samples-jpa/{id}", secondId));
+            }
+            if (firstId != null) {
+                mockMvc.perform(delete("/api/samples-jpa/{id}", firstId));
+            }
+        }
+    }
 }

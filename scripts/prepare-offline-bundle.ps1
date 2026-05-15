@@ -1,38 +1,40 @@
 $ErrorActionPreference = "Stop"
 
-$projectRoot = Resolve-Path "$PSScriptRoot\.."
+$projectRoot = (Resolve-Path "$PSScriptRoot\..").Path
 $backendDir = Join-Path $projectRoot "backend"
 $frontendDir = Join-Path $projectRoot "frontend"
 $offlineDir = Join-Path $projectRoot "offline"
 $gradleHome = Join-Path $offlineDir "gradle-home"
 $npmCache = Join-Path $offlineDir "npm-cache"
-$localGradle = Join-Path $offlineDir "gradle\bin\gradle.bat"
+$gradleWrapper = Join-Path $backendDir "gradlew.bat"
+
+. (Join-Path $PSScriptRoot "offline-build-tools.ps1")
 
 New-Item -ItemType Directory -Force -Path $gradleHome | Out-Null
 New-Item -ItemType Directory -Force -Path $npmCache | Out-Null
 
-if (Test-Path $localGradle) {
-    $gradleCommand = $localGradle
-} else {
-    $gradleCommand = "gradle"
-}
+$npmCommand = Resolve-ProjectNpmCommand -OfflineDir $offlineDir
+Assert-OfflinePath -Path $gradleWrapper -Message "Missing Gradle wrapper"
 
 Write-Host "Preparing offline bundle..."
 Write-Host "Project: $projectRoot"
+Write-Host "npm command: $npmCommand"
 Write-Host "Gradle user home: $gradleHome"
-Write-Host "Gradle command: $gradleCommand"
+Write-Host "Gradle wrapper: $gradleWrapper"
 
 Push-Location $frontendDir
 try {
-    npm.cmd ci --cache $npmCache --prefer-offline
-    npm.cmd run build
+    Invoke-OfflineCommand $npmCommand ci --cache $npmCache --prefer-offline
+    Invoke-OfflineCommand $npmCommand ci --offline --cache $npmCache
+    Invoke-OfflineCommand $npmCommand run build
 } finally {
     Pop-Location
 }
 
 Push-Location $backendDir
 try {
-    & $gradleCommand --gradle-user-home $gradleHome clean bootJar
+    Invoke-OfflineCommand $gradleWrapper --gradle-user-home $gradleHome --no-daemon clean bootJar
+    Invoke-OfflineCommand $gradleWrapper --offline --gradle-user-home $gradleHome --no-daemon bootJar
 } finally {
     Pop-Location
 }

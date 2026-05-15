@@ -18,7 +18,8 @@ export function generateBackend(options, backendRoot = process.cwd()) {
   const idColumn = requiredString(options.idColumn, "backend.idColumn");
   const apiPath = requiredString(options.apiPath, "apiPath");
   const fields = normalizeFields(options.fields);
-  const keywordColumns = normalizeKeywordColumns(options.keywordColumns, fields);
+  const idField = findIdField(fields, idColumn);
+  const keywordFields = normalizeKeywordFields(options, fields);
   const force = options.force === true;
   const dryRun = options.dryRun === true;
 
@@ -37,12 +38,14 @@ export function generateBackend(options, backendRoot = process.cwd()) {
     packageName,
     packagePrefix: `${basePackage}.${packageName}`,
     className,
-    variableName: toCamelCase(className),
+    entityVariableName: toCamelCase(className),
+    serviceVariableName: `${toCamelCase(className)}Service`,
+    repositoryVariableName: `${toCamelCase(className)}Repository`,
     tableName,
-    idColumn,
     apiBasePath,
     fields,
-    keywordColumns,
+    idField,
+    keywordFields,
   };
 
   const files = [
@@ -55,8 +58,20 @@ export function generateBackend(options, backendRoot = process.cwd()) {
       content: serviceTemplate(context),
     },
     {
+      path: path.join(featureRoot, "domain", `${className}.java`),
+      content: entityTemplate(context),
+    },
+    {
       path: path.join(featureRoot, "repository", `${className}Repository.java`),
       content: repositoryTemplate(context),
+    },
+    {
+      path: path.join(featureRoot, "repository", `${className}QueryRepository.java`),
+      content: queryRepositoryTemplate(context),
+    },
+    {
+      path: path.join(featureRoot, "repository", `${className}QueryRepositoryImpl.java`),
+      content: queryRepositoryImplTemplate(context),
     },
     {
       path: path.join(featureRoot, "dto", `${className}Item.java`),
@@ -124,27 +139,53 @@ function normalizeFields(fields) {
   });
 }
 
-function normalizeKeywordColumns(keywordColumns, fields) {
-  if (keywordColumns === undefined || keywordColumns === null) {
-    return fields.filter((field) => field.type === "String").map((field) => field.column);
+function findIdField(fields, idColumn) {
+  const idField = fields.find((field) => field.column === idColumn);
+  if (!idField) {
+    throw new Error(`Field "backend.idColumn" must match one backend.fields[].column value: ${idColumn}`);
   }
 
-  if (!Array.isArray(keywordColumns)) {
-    throw new Error("Field \"backend.keywordColumns\" must be an array.");
+  return idField;
+}
+
+function normalizeKeywordFields(options, fields) {
+  const configured = options.keywordFields ?? options.keywordColumns;
+  const values = configured === undefined || configured === null
+    ? fields.filter((field) => field.type === "String").map((field) => field.name)
+    : configured;
+
+  if (!Array.isArray(values)) {
+    throw new Error("Field \"backend.keywordFields\" or \"backend.keywordColumns\" must be an array.");
   }
 
-  for (const [index, column] of keywordColumns.entries()) {
-    if (typeof column !== "string" || column.trim() === "") {
-      throw new Error(`Field "backend.keywordColumns[${index}]" must be a non-empty string.`);
+  const result = [];
+  const seen = new Set();
+
+  for (const [index, value] of values.entries()) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error(`Keyword field at index ${index} must be a non-empty string.`);
     }
-    validateSqlIdentifier(column, `backend.keywordColumns[${index}]`);
+
+    const field = fields.find((candidate) => candidate.name === value || candidate.column === value);
+    if (!field) {
+      throw new Error(`Keyword field "${value}" must match a backend.fields[].name or backend.fields[].column value.`);
+    }
+
+    if (field.type !== "String") {
+      throw new Error(`Keyword field "${value}" must reference a String field.`);
+    }
+
+    if (!seen.has(field.name)) {
+      seen.add(field.name);
+      result.push(field);
+    }
   }
 
-  return keywordColumns;
+  return result;
 }
 
 function controllerTemplate(context) {
-  const { basePackage, className, variableName, packagePrefix, apiBasePath } = context;
+  const { basePackage, className, serviceVariableName, packagePrefix, apiBasePath } = context;
 
   return `package ${packagePrefix}.api;
 
@@ -161,169 +202,292 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("${apiBasePath}")
 public class ${className}Controller {
 
-    private final ${className}Service ${variableName}Service;
+    private final ${className}Service ${serviceVariableName};
 
-    public ${className}Controller(${className}Service ${variableName}Service) {
-        this.${variableName}Service = ${variableName}Service;
+    public ${className}Controller(${className}Service ${serviceVariableName}) {
+        this.${serviceVariableName} = ${serviceVariableName};
     }
 
     @PostMapping("/search")
     ListResponse<${className}Item> search(@RequestBody ${className}ListRequest request) {
-        return ${variableName}Service.search(request);
+        return ${serviceVariableName}.search(request);
     }
 }
 `;
 }
 
 function serviceTemplate(context) {
-  const { basePackage, className, variableName, packagePrefix } = context;
+  const { basePackage, className, packagePrefix, repositoryVariableName, fields } = context;
+  const sortCases = fields
+    .map((field) => `            case "${field.name}" -> "${field.name}";`)
+    .join("\n");
 
   return `package ${packagePrefix}.service;
 
 import ${basePackage}.common.list.ListResponse;
+import ${basePackage}.common.list.ListSortRequest;
 import ${basePackage}.common.list.PageSupport;
+import ${packagePrefix}.domain.${className};
 import ${packagePrefix}.dto.${className}Item;
 import ${packagePrefix}.dto.${className}ListRequest;
 import ${packagePrefix}.repository.${className}Repository;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 public class ${className}Service {
 
-    private final ${className}Repository ${variableName}Repository;
+    private final ${className}Repository ${repositoryVariableName};
 
-    public ${className}Service(${className}Repository ${variableName}Repository) {
-        this.${variableName}Repository = ${variableName}Repository;
+    public ${className}Service(${className}Repository ${repositoryVariableName}) {
+        this.${repositoryVariableName} = ${repositoryVariableName};
     }
 
+    @Transactional(readOnly = true)
     public ListResponse<${className}Item> search(${className}ListRequest request) {
         int pageNo = PageSupport.normalizePageNo(request.pageNo());
         int pageSize = PageSupport.normalizePageSize(request.pageSize());
-        int offset = PageSupport.offset(pageNo, pageSize);
+        Pageable pageable = PageRequest.of(pageNo - 1, pageSize, toSort(request.sort()));
 
-        long totalCount = ${variableName}Repository.count(request.filters());
-        List<${className}Item> rows = ${variableName}Repository.search(request.filters(), request.sort(), offset, pageSize);
-
-        return new ListResponse<>(rows, totalCount, pageNo, pageSize);
-    }
-}
-`;
-}
-
-function repositoryTemplate(context) {
-  const { basePackage, className, packagePrefix, tableName, idColumn, fields, keywordColumns } = context;
-  const selectColumns = fields.map((field) => `                    ${field.column}`).join(",\n");
-  const keywordExpression = keywordColumns
-    .map((column) => `${column} LIKE :keyword`)
-    .join("\n                    OR ");
-  const keywordCondition = keywordColumns.length === 0
-    ? ""
-    : `\n        if (filters != null && StringUtils.hasText(filters.keyword())) {\n            conditions.add("""\n                (\n                    ${keywordExpression}\n                )\n                """);\n            params.put("keyword", "%" + filters.keyword().trim() + "%");\n        }\n`;
-  const orderCases = fields
-    .map((field) => `            case "${field.name}" -> "${field.column}";`)
-    .join("\n");
-
-  return `package ${packagePrefix}.repository;
-
-import ${basePackage}.common.list.ListSortRequest;
-import ${basePackage}.common.persistence.QueryParts;
-import ${packagePrefix}.dto.${className}Item;
-import ${packagePrefix}.dto.${className}SearchFilter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.stereotype.Repository;
-import org.springframework.util.StringUtils;
-
-@Repository
-public class ${className}Repository {
-
-    private final JdbcClient jdbcClient;
-
-    public ${className}Repository(JdbcClient jdbcClient) {
-        this.jdbcClient = jdbcClient;
-    }
-
-    public long count(${className}SearchFilter filters) {
-        QueryParts queryParts = buildWhere(filters);
-        Long totalCount = jdbcClient.sql("SELECT COUNT(*) FROM ${tableName} " + queryParts.where())
-            .params(queryParts.params())
-            .query(Long.class)
-            .single();
-
-        return totalCount == null ? 0 : totalCount;
-    }
-
-    public List<${className}Item> search(${className}SearchFilter filters, List<ListSortRequest> sort, int offset, int pageSize) {
-        QueryParts queryParts = buildWhere(filters);
-        String orderBy = buildOrderBy(sort);
-
-        return jdbcClient.sql("""
-                SELECT
-${selectColumns}
-                FROM ${tableName}
-                """ + queryParts.where() + orderBy + """
-                OFFSET :offset ROWS FETCH NEXT :pageSize ROWS ONLY
-                """)
-            .params(queryParts.params())
-            .param("offset", offset)
-            .param("pageSize", pageSize)
-            .query(${className}Item.class)
-            .list();
-    }
-
-    private QueryParts buildWhere(${className}SearchFilter filters) {
-        List<String> conditions = new ArrayList<>();
-        Map<String, Object> params = new HashMap<>();
-${keywordCondition}
-        if (conditions.isEmpty()) {
-            return new QueryParts("", params);
-        }
-
-        return new QueryParts("WHERE " + String.join(" AND ", conditions) + " ", params);
-    }
-
-    private String buildOrderBy(List<ListSortRequest> sort) {
-        if (sort == null || sort.isEmpty()) {
-            return "ORDER BY ${idColumn} ";
-        }
-
-        List<String> orderItems = sort.stream()
-            .map(this::toOrderItem)
-            .filter(StringUtils::hasText)
+        Page<${className}> page = ${repositoryVariableName}.search(request.filters(), pageable);
+        List<${className}Item> rows = page.getContent().stream()
+            .map(${className}Item::from)
             .toList();
 
-        if (orderItems.isEmpty()) {
-            return "ORDER BY ${idColumn} ";
-        }
-
-        return "ORDER BY " + String.join(", ", orderItems) + " ";
+        return new ListResponse<>(rows, page.getTotalElements(), pageNo, pageSize);
     }
 
-    private String toOrderItem(ListSortRequest sort) {
-        if (sort == null || !StringUtils.hasText(sort.field())) {
-            return "";
+    private Sort toSort(List<ListSortRequest> sort) {
+        if (sort == null || sort.isEmpty()) {
+            return Sort.by(Sort.Order.asc("${context.idField.name}"));
         }
 
-        String column = switch (sort.field()) {
-${orderCases}
+        List<Sort.Order> orders = sort.stream()
+            .map(this::toOrder)
+            .filter(order -> order != null)
+            .toList();
+
+        if (orders.isEmpty()) {
+            return Sort.by(Sort.Order.asc("${context.idField.name}"));
+        }
+
+        return Sort.by(orders);
+    }
+
+    private Sort.Order toOrder(ListSortRequest sort) {
+        if (sort == null || !StringUtils.hasText(sort.field())) {
+            return null;
+        }
+
+        String property = switch (sort.field()) {
+${sortCases}
             default -> "";
         };
 
-        if (!StringUtils.hasText(column)) {
-            return "";
+        if (!StringUtils.hasText(property)) {
+            return null;
         }
 
-        String requestedDirection = sort.direction() == null ? "" : sort.direction().toLowerCase(Locale.ROOT);
-        String direction = "desc".equals(requestedDirection) ? "DESC" : "ASC";
-        return column + " " + direction;
+        Sort.Direction direction = "desc".equalsIgnoreCase(sort.direction()) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        return new Sort.Order(direction, property);
     }
 }
 `;
+}
+
+function entityTemplate(context) {
+  const { className, packagePrefix, tableName, fields, idField } = context;
+  const imports = importsForFields(fields);
+  const fieldLines = fields.map((field) => entityFieldTemplate(field, idField)).join("\n\n");
+  const getterLines = fields.map((field) => getterTemplate(field)).join("\n\n");
+
+  return `package ${packagePrefix}.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+${imports}
+@Entity
+@Table(name = "${tableName}")
+public class ${className} {
+
+${fieldLines}
+
+    protected ${className}() {
+    }
+
+${getterLines}
+}
+`;
+}
+
+function entityFieldTemplate(field, idField) {
+  const idAnnotations = field.name === idField.name
+    ? "    @Id\n    @GeneratedValue(strategy = GenerationType.IDENTITY)\n"
+    : "";
+
+  return `${idAnnotations}    @Column(name = "${field.column}")
+    private ${field.type} ${field.name};`;
+}
+
+function getterTemplate(field) {
+  return `    public ${field.type} get${toPascalCase(field.name)}() {
+        return ${field.name};
+    }`;
+}
+
+function repositoryTemplate(context) {
+  const { className, packagePrefix, idField } = context;
+
+  return `package ${packagePrefix}.repository;
+
+import ${packagePrefix}.domain.${className};
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface ${className}Repository extends JpaRepository<${className}, ${idField.type}>, ${className}QueryRepository {
+}
+`;
+}
+
+function queryRepositoryTemplate(context) {
+  const { className, packagePrefix } = context;
+
+  return `package ${packagePrefix}.repository;
+
+import ${packagePrefix}.domain.${className};
+import ${packagePrefix}.dto.${className}SearchFilter;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+public interface ${className}QueryRepository {
+
+    Page<${className}> search(${className}SearchFilter filters, Pageable pageable);
+}
+`;
+}
+
+function queryRepositoryImplTemplate(context) {
+  const { className, packagePrefix, entityVariableName, fields, keywordFields } = context;
+  const orderCases = fields
+    .map((field) => `            case "${field.name}" -> Optional.of(new OrderSpecifier<>(direction, ${entityVariableName}.${field.name}));`)
+    .join("\n");
+  const containsKeywordMethod = keywordPredicateTemplate(context);
+
+  return `package ${packagePrefix}.repository;
+
+import static ${packagePrefix}.domain.Q${className}.${entityVariableName};
+
+import ${packagePrefix}.domain.${className};
+import ${packagePrefix}.dto.${className}SearchFilter;
+import com.querydsl.core.types.Order;
+import com.querydsl.core.types.OrderSpecifier;
+import com.querydsl.core.types.Predicate;
+import com.querydsl.jpa.impl.JPAQuery;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.EntityManager;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.util.StringUtils;
+
+public class ${className}QueryRepositoryImpl implements ${className}QueryRepository {
+
+    private final JPAQueryFactory queryFactory;
+
+    public ${className}QueryRepositoryImpl(EntityManager entityManager) {
+        this.queryFactory = new JPAQueryFactory(entityManager);
+    }
+
+    @Override
+    public Page<${className}> search(${className}SearchFilter filters, Pageable pageable) {
+        Predicate keywordCondition = containsKeyword(filters);
+
+        JPAQuery<${className}> rowQuery = queryFactory
+            .selectFrom(${entityVariableName})
+            .orderBy(toOrderSpecifiers(pageable.getSort()))
+            .offset(pageable.getOffset())
+            .limit(pageable.getPageSize());
+
+        JPAQuery<Long> countQuery = queryFactory
+            .select(${entityVariableName}.count())
+            .from(${entityVariableName});
+
+        if (keywordCondition != null) {
+            rowQuery.where(keywordCondition);
+            countQuery.where(keywordCondition);
+        }
+
+        List<${className}> rows = rowQuery.fetch();
+        Long totalCount = countQuery.fetchOne();
+
+        return new PageImpl<>(rows, pageable, totalCount == null ? 0 : totalCount);
+    }
+
+${containsKeywordMethod}
+
+    private OrderSpecifier<?>[] toOrderSpecifiers(Sort sort) {
+        List<OrderSpecifier<?>> orderSpecifiers = new ArrayList<>();
+
+        if (sort != null) {
+            for (Sort.Order order : sort) {
+                toOrderSpecifier(order).ifPresent(orderSpecifiers::add);
+            }
+        }
+
+        if (orderSpecifiers.isEmpty()) {
+            orderSpecifiers.add(${entityVariableName}.${context.idField.name}.asc());
+        }
+
+        return orderSpecifiers.toArray(OrderSpecifier<?>[]::new);
+    }
+
+    private Optional<OrderSpecifier<?>> toOrderSpecifier(Sort.Order sort) {
+        Order direction = sort.isDescending() ? Order.DESC : Order.ASC;
+        return switch (sort.getProperty()) {
+${orderCases}
+            default -> Optional.empty();
+        };
+    }
+}
+`;
+}
+
+function keywordPredicateTemplate(context) {
+  const { className, entityVariableName, keywordFields } = context;
+
+  if (keywordFields.length === 0) {
+    return `    private Predicate containsKeyword(${className}SearchFilter filters) {
+        return null;
+    }`;
+  }
+
+  const [firstField, ...remainingFields] = keywordFields;
+  const expression = [
+    `${entityVariableName}.${firstField.name}.containsIgnoreCase(keyword)`,
+    ...remainingFields.map((field) => `            .or(${entityVariableName}.${field.name}.containsIgnoreCase(keyword))`),
+  ].join("\n");
+
+  return `    private Predicate containsKeyword(${className}SearchFilter filters) {
+        if (filters == null || !StringUtils.hasText(filters.keyword())) {
+            return null;
+        }
+
+        String keyword = filters.keyword().trim();
+        return ${expression};
+    }`;
 }
 
 function itemTemplate(context) {
@@ -335,12 +499,22 @@ function itemTemplate(context) {
       return `    ${field.type} ${field.name}${suffix}`;
     })
     .join("\n");
+  const fromArgs = fields
+    .map((field) => `            source.get${toPascalCase(field.name)}()`)
+    .join(",\n");
 
   return `package ${packagePrefix}.dto;
+
+import ${packagePrefix}.domain.${className};
 ${imports}
 public record ${className}Item(
 ${fieldLines}
 ) {
+    public static ${className}Item from(${className} source) {
+        return new ${className}Item(
+${fromArgs}
+        );
+    }
 }
 `;
 }
@@ -364,8 +538,8 @@ public record ${className}ListRequest(
 }
 
 function searchFilterTemplate(context) {
-  const { className, packagePrefix, keywordColumns } = context;
-  const fields = keywordColumns.length === 0 ? "" : "\n    String keyword\n";
+  const { className, packagePrefix, keywordFields } = context;
+  const fields = keywordFields.length === 0 ? "" : "\n    String keyword\n";
 
   return `package ${packagePrefix}.dto;
 
@@ -378,10 +552,10 @@ function importsForFields(fields) {
   const imports = [...new Set(fields.map((field) => JAVA_TYPE_IMPORTS.get(field.type)).filter(Boolean))].sort();
 
   if (imports.length === 0) {
-    return "\n";
+    return "";
   }
 
-  return `\n${imports.map((value) => `import ${value};`).join("\n")}\n\n`;
+  return `${imports.map((value) => `import ${value};`).join("\n")}\n\n`;
 }
 
 function toApiBasePath(apiPath) {

@@ -7,7 +7,6 @@ import com.example.governanceportal.samplejpa.domain.SampleJpa;
 import com.example.governanceportal.samplejpa.dto.SampleJpaCreateRequest;
 import com.example.governanceportal.samplejpa.dto.SampleJpaItem;
 import com.example.governanceportal.samplejpa.dto.SampleJpaListRequest;
-import com.example.governanceportal.samplejpa.dto.SampleJpaSearchFilter;
 import com.example.governanceportal.samplejpa.dto.SampleJpaUpdateRequest;
 import com.example.governanceportal.samplejpa.repository.SampleJpaRepository;
 import java.util.List;
@@ -36,7 +35,7 @@ public class SampleJpaService {
         int pageSize = PageSupport.normalizePageSize(request.pageSize());
         Pageable pageable = PageRequest.of(pageNo - 1, pageSize, toSort(request.sort()));
 
-        Page<SampleJpa> page = searchPage(request.filters(), pageable);
+        Page<SampleJpa> page = sampleJpaRepository.search(request.filters(), pageable);
         List<SampleJpaItem> rows = page.getContent().stream()
             .map(SampleJpaItem::from)
             .toList();
@@ -66,19 +65,6 @@ public class SampleJpaService {
         }
 
         sampleJpaRepository.deleteById(id);
-    }
-
-    private Page<SampleJpa> searchPage(SampleJpaSearchFilter filters, Pageable pageable) {
-        if (filters == null || !StringUtils.hasText(filters.keyword())) {
-            return sampleJpaRepository.findAll(pageable);
-        }
-
-        String keyword = filters.keyword().trim();
-        return sampleJpaRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
-            keyword,
-            keyword,
-            pageable
-        );
     }
 
     private Sort toSort(List<ListSortRequest> sort) {
