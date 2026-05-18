@@ -179,6 +179,7 @@ H2 콘솔 접속 정보:
 
 오프라인 빌드는 내부망 PC의 `PATH`에 설치된 Node/npm/Gradle에 의존하지 않습니다.
 프론트 빌드는 `offline/nodejs/node-*-win-x64/npm.cmd`를 사용하고, 백엔드 빌드는 `backend/gradlew.bat`와 `offline/gradle-home`을 사용합니다.
+상세 절차는 `docs/offline_build_guide.txt`를 기준으로 관리합니다.
 
 인터넷이 되는 PC에서 캐시를 준비합니다.
 
@@ -199,9 +200,8 @@ H2 콘솔 접속 정보:
 
 ## 참고 문서
 
-- `docs/project_inventory.txt`: 프로젝트 구조와 주요 파일 정리
 - `docs/frontend/`: 프론트엔드 로컬 개발 온보딩과 화면 작성 기준
 - `docs/deployment_nginx_springboot.txt`: Nginx + Spring Boot JAR 운영 구성
 - `docs/offline_build_guide.txt`: 내부망 오프라인 빌드 절차
-- `개선사항/frontend-si-template.md`: SI 프로젝트용 프론트엔드 템플릿화 기획
-- `개선사항/frontend-si-template-completed.md`: 프론트엔드 템플릿화 완료 내역
+- `개선사항/frontend-si-template.md`: SI 프로젝트용 프론트엔드 템플릿화 남은 후보
+- `개선사항/frontend-si-template-completed.md`: 프론트엔드 템플릿화 완료 요약

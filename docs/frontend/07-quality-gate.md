@@ -27,7 +27,7 @@ cd backend
 
 ## 화면 확인
 
-- `/`, `/metadata`, `/source-sample`, `/lineage` 진입 여부
+- `/`, `/metadata`, `/source-sample`, `/lineage`, `/sample-list`, `/sample-list-jpa` 진입 여부
 - 검색, 초기화, 페이지 변경, 페이지 크기 변경, 정렬 변경
 - API 실패 시 오류 메시지 표시
 - 권한 없는 화면 진입 시 `/forbidden` 이동
@@ -35,8 +35,9 @@ cd backend
 
 ## 생성기 확인
 
+프로젝트 루트에서 실행한다.
+
 ```powershell
-cd frontend
 tools\generator\generate-feature.cmd --dry-run
 ```
 
