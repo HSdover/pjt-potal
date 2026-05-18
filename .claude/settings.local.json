@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(python -c \"import docx; import pptx; import openpyxl; print\\('OK'\\)\")",
+      "PowerShell(python C:/workspace/governance-portal/tools/extract_office_docs.py \"C:/Users/gkstj/OneDrive/바탕 화면/삼성증권-거버넌스포탈-문서\" \"C:/workspace/governance-portal/logs/doc-extract\")"
+    ]
+  }
+}

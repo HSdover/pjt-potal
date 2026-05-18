@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
+import useVuelidate from "@vuelidate/core";
 import { ElDialog, ElForm, ElFormItem, ElInput, ElMessage, ElMessageBox } from "element-plus";
 import { Delete, Edit, Plus, Search } from "@element-plus/icons-vue";
 import AuthButton from "@/shared/components/auth/AuthButton.vue";
@@ -7,9 +8,15 @@ import BaseGrid from "@/shared/components/grid/BaseGrid.vue";
 import SearchPanel from "@/shared/components/search/SearchPanel.vue";
 import GridPageLayout from "@/components/GridPageLayout.vue";
 import type { ListRequest, ListSort } from "@/shared/types/list";
+import { fieldError, maxLengthText, requiredText } from "@/shared/validation/vuelidate";
 import { createSample, deleteSample, fetchList, updateSample } from "../api";
 import { columns as gridColumns } from "../columns";
-import type { SampleListItem, SampleListSaveRequest, SampleListSearchFilter } from "../types";
+import type { SampleListItem, SampleListSearchFilter } from "../types";
+
+type SampleForm = {
+  name: string;
+  description: string;
+};
 
 const rows = ref<SampleListItem[]>([]);
 const loading = ref(false);
@@ -28,13 +35,23 @@ const request = reactive<ListRequest<SampleListSearchFilter>>({
   },
 });
 
-const form = reactive<SampleListSaveRequest>({
+const form = reactive<SampleForm>({
   name: "",
   description: "",
 });
 
 const columns = computed(() => gridColumns);
 const dialogTitle = computed(() => (dialogMode.value === "create" ? "샘플 등록" : "샘플 수정"));
+const rules = computed(() => ({
+  name: {
+    required: requiredText("이름"),
+    maxLength: maxLengthText("이름", 200),
+  },
+  description: {
+    maxLength: maxLengthText("설명", 1000),
+  },
+}));
+const v$ = useVuelidate(rules, form, { $autoDirty: true });
 
 async function load() {
   loading.value = true;
@@ -93,6 +110,7 @@ function openCreateDialog() {
   dialogMode.value = "create";
   form.name = "";
   form.description = "";
+  v$.value.$reset();
   dialogVisible.value = true;
 }
 
@@ -105,12 +123,14 @@ function openUpdateDialog() {
   dialogMode.value = "update";
   form.name = selectedRow.value.name;
   form.description = selectedRow.value.description ?? "";
+  v$.value.$reset();
   dialogVisible.value = true;
 }
 
 async function save() {
-  if (!form.name.trim()) {
-    ElMessage.warning("이름을 입력하세요.");
+  const valid = await v$.value.$validate();
+  if (!valid) {
+    ElMessage.warning("입력값을 확인하세요.");
     return;
   }
 
@@ -218,11 +238,18 @@ onMounted(load);
 
     <ElDialog v-model="dialogVisible" :title="dialogTitle" width="480px">
       <ElForm label-position="top">
-        <ElFormItem label="이름" required>
-          <ElInput v-model="form.name" maxlength="200" show-word-limit />
+        <ElFormItem label="이름" required :error="fieldError(v$.name)">
+          <ElInput v-model="form.name" maxlength="200" show-word-limit @blur="v$.name.$touch()" />
         </ElFormItem>
-        <ElFormItem label="설명">
-          <ElInput v-model="form.description" type="textarea" :rows="4" maxlength="1000" show-word-limit />
+        <ElFormItem label="설명" :error="fieldError(v$.description)">
+          <ElInput
+            v-model="form.description"
+            type="textarea"
+            :rows="4"
+            maxlength="1000"
+            show-word-limit
+            @blur="v$.description.$touch()"
+          />
         </ElFormItem>
       </ElForm>
 
