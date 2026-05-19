@@ -26,6 +26,11 @@ const referenceRoutes: RouteRecordRaw[] = referenceMenuEnabled
         component: () => import("@/features/_ref-approval/pages/RefApprovalPage.vue"),
         meta: { title: "참고: 승인 워크플로우", menu: true, order: 940, auth: "REF_VIEW" },
       },
+      {
+        path: "/_ref-tags",
+        component: () => import("@/features/_ref-tags/pages/RefTagComponentsPage.vue"),
+        meta: { title: "참고: 공통 태그", menu: true, order: 950, auth: "REF_VIEW" },
+      },
     ]
   : [];
 
