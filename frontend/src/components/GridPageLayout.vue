@@ -11,10 +11,10 @@ withDefaults(defineProps<{
 </script>
 
 <template>
-  <main class="mx-auto max-w-screen-2xl px-6 py-6">
-    <header class="mb-4">
-      <h2 class="text-xl font-bold text-slate-800">{{ title }}</h2>
-      <p v-if="description" class="mt-1 text-sm text-slate-500">{{ description }}</p>
+  <main class="portal-page">
+    <header class="portal-page-header">
+      <h2 class="portal-page-title">{{ title }}</h2>
+      <p v-if="description" class="portal-page-description">{{ description }}</p>
     </header>
 
     <!-- [10. 검색 영역 표준화] 검색/버튼 영역은 toolbar 슬롯으로 통일한다. -->
@@ -23,7 +23,7 @@ withDefaults(defineProps<{
     </div>
 
     <!-- [9. AG Grid 표준 래퍼] 본문에는 BaseGrid 같은 표준 그리드 컴포넌트를 배치한다. -->
-    <ElCard shadow="never">
+    <ElCard class="portal-card" shadow="never">
       <slot />
     </ElCard>
 

@@ -11,8 +11,6 @@ repositories {
     mavenCentral()
 }
 
-def projectRootDir = file("${rootDir}/..")
-def hiraSampleCsv = file("${projectRootDir}/data/processed/hira/hira_institution_open_status_sample_1000_h2.csv")
 def querydslVersion = "5.1.0"
 
 java {
@@ -53,12 +51,6 @@ dependencies {
 
 tasks.named("test") {
     useJUnitPlatform()
-}
-
-tasks.named("processResources") {
-    from(hiraSampleCsv) {
-        into "sample-data/hira"
-    }
 }
 
 bootJar {

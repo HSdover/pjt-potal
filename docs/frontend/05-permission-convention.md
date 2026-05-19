@@ -8,9 +8,9 @@
 
 ```ts
 {
-  path: "/metadata",
-  component: () => import("@/features/metadata/pages/MetadataListPage.vue"),
-  meta: { title: "메타데이터", menu: true, order: 20, auth: "METADATA_READ" },
+  path: "/sample-list",
+  component: () => import("@/features/sample-list/pages/SampleListPage.vue"),
+  meta: { title: "샘플 CRUD", menu: true, order: 20, auth: "SAMPLE_READ" },
 }
 ```
 
@@ -21,7 +21,7 @@
 업무 버튼은 `AuthButton`을 사용한다.
 
 ```vue
-<AuthButton auth="METADATA_READ" type="primary" @click="search">조회</AuthButton>
+<AuthButton auth="SAMPLE_READ" type="primary" @click="search">조회</AuthButton>
 ```
 
 프론트 권한 제어는 사용자 경험을 위한 노출 제어다. 실제 보안은 백엔드 API 권한 검증으로 보장해야 한다.

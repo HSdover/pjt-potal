@@ -2,10 +2,6 @@ import { defineStore } from "pinia";
 
 export const SAMPLE_PERMISSIONS = [
   "DASHBOARD_READ",
-  "METADATA_READ",
-  "METADATA_SAVE",
-  "SOURCE_SAMPLE_READ",
-  "LINEAGE_READ",
   "SAMPLE_READ",
   "SAMPLE_CREATE",
   "SAMPLE_UPDATE",
@@ -14,6 +10,7 @@ export const SAMPLE_PERMISSIONS = [
   "SAMPLE_JPA_CREATE",
   "SAMPLE_JPA_UPDATE",
   "SAMPLE_JPA_DELETE",
+  "REF_VIEW",
 ] as const;
 
 type AuthSession = {

@@ -96,14 +96,16 @@ Nginx 경유:
 
 ```bash
 curl http://localhost/actuator/health
-curl http://localhost/api/metadata
+curl -X POST http://localhost/api/samples/search \
+  -H "Content-Type: application/json" \
+  -d '{"pageNo":1,"pageSize":10,"sort":[],"filters":{"keyword":""}}'
 ```
 
 브라우저:
 
 - `http://<host>/`
-- `http://<host>/metadata`
-- `http://<host>/lineage`
+- `http://<host>/sample-list`
+- `http://<host>/sample-list-jpa`
 - `http://<host>/swagger-ui.html`
 
 9. 주의사항

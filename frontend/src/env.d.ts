@@ -1,5 +1,14 @@
 /// <reference types="vite/client" />
 
+interface ImportMetaEnv {
+  readonly VITE_REFERENCE_MENU_ENABLED?: string;
+  readonly VITE_API_PROXY_TARGET?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
 declare module "*.vue" {
   import type { DefineComponent } from "vue";
 

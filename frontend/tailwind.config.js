@@ -7,7 +7,9 @@ export default {
         brand: {
           ink: "#17202a",
           teal: "#0f766e",
-          blue: "#2563eb",
+          blue: "#0057b8",
+          navy: "#061b4f",
+          cyan: "#00a6d6",
         },
       },
     },

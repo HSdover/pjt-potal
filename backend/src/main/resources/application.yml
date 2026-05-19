@@ -57,9 +57,6 @@ management:
         include: health,info,metrics
 
 app:
-  sample-data:
-    enabled: ${GOVERNANCE_SAMPLE_DATA_ENABLED:true}
-    hira-csv-path: ${GOVERNANCE_HIRA_SAMPLE_CSV:}
   frontend-dev-server:
     enabled: ${GOVERNANCE_FRONTEND_DEV_SERVER_ENABLED:false}
     restart: ${GOVERNANCE_FRONTEND_DEV_SERVER_RESTART:false}

@@ -69,7 +69,7 @@ function onSortChanged(event: SortChangedEvent) {
 <template>
   <div>
     <!-- [9. AG Grid 표준 래퍼] 그리드는 API를 직접 알지 않고 이벤트만 화면으로 전달한다. -->
-    <div class="ag-theme-quartz w-full" :class="heightClass" v-loading="loading">
+    <div class="ag-theme-quartz w-full overflow-hidden rounded-lg border border-slate-200" :class="heightClass" v-loading="loading">
       <AgGridVue
         class="h-full w-full"
         :row-data="rows"
@@ -81,7 +81,7 @@ function onSortChanged(event: SortChangedEvent) {
         @sort-changed="onSortChanged"
       />
     </div>
-    <div class="mt-3 flex items-center justify-between gap-3">
+    <div class="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
       <span class="text-xs font-semibold text-slate-500">총 {{ totalCount.toLocaleString() }}건</span>
       <ElPagination
         v-model:current-page="currentPage"

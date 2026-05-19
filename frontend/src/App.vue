@@ -24,34 +24,51 @@ function handleSelect(key: string) {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50">
-    <!-- [11. 레이아웃 및 화면 스타일 표준] SI 포털형 상단 메뉴 레이아웃의 현재 기준이다. -->
-    <header class="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-sm">
-      <div class="mx-auto flex max-w-screen-2xl items-center px-6">
-        <div class="mr-6 shrink-0">
-          <span class="text-base font-bold text-slate-800">Governance Portal</span>
-          <span class="ml-2 text-xs font-semibold text-brand-teal">Sample</span>
+  <div class="portal-shell">
+    <div class="portal-top-strip">
+      <div class="portal-top-strip-inner">
+        <span>Samsung Securities Governance Portal</span>
+        <div class="portal-utility-links">
+          <span>로그인</span>
+          <span>검색</span>
+          <span>바로가기</span>
         </div>
-        <ElMenu
-          mode="horizontal"
-          :default-active="activeMenu"
-          :ellipsis="false"
-          class="flex-1"
-          @select="handleSelect"
-        >
-          <!-- [12. 메뉴, 라우터, 권한 표준] 메뉴 항목은 라우트 meta 설정에서 생성한다. -->
-          <ElMenuItem v-for="item in menuItems" :key="item.path" :index="item.path">
-            {{ item.title }}
-          </ElMenuItem>
-        </ElMenu>
       </div>
+    </div>
+
+    <header class="portal-header">
+      <div class="portal-header-inner">
+        <div class="portal-brand">
+          <div class="portal-brand-mark">POP</div>
+          <div>
+            <div class="portal-brand-title">Governance Portal</div>
+            <div class="portal-brand-subtitle">AI DATA PLATFORM</div>
+          </div>
+        </div>
+        <div class="portal-header-actions">
+          <button type="button" class="portal-quick-button">신청 현황</button>
+          <button type="button" class="portal-quick-button">운영 알림</button>
+          <button type="button" class="portal-quick-button primary">Quick Menu</button>
+        </div>
+      </div>
+
+      <nav class="portal-nav">
+        <div class="portal-nav-inner">
+          <ElMenu
+            mode="horizontal"
+            :default-active="activeMenu"
+            :ellipsis="false"
+            class="portal-menu"
+            @select="handleSelect"
+          >
+            <!-- [12. 메뉴, 라우터, 권한 표준] 메뉴 항목은 라우트 meta 설정에서 생성한다. -->
+            <ElMenuItem v-for="item in menuItems" :key="item.path" :index="item.path">
+              {{ item.title }}
+            </ElMenuItem>
+          </ElMenu>
+        </div>
+      </nav>
     </header>
     <RouterView />
   </div>
 </template>
-
-<style>
-.el-menu--horizontal.el-menu {
-  border-bottom: none;
-}
-</style>

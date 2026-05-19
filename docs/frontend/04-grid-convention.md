@@ -26,10 +26,10 @@
 
 ```ts
 import type { ColDef } from "ag-grid-community";
-import type { MetadataItem } from "./types";
+import type { SampleListItem } from "./types";
 
-export const metadataColumns: ColDef<MetadataItem>[] = [
-  { field: "datasetName", headerName: "데이터셋명", minWidth: 220, flex: 1 },
+export const columns: ColDef<SampleListItem>[] = [
+  { field: "name", headerName: "이름", minWidth: 220, flex: 1 },
 ];
 ```
 

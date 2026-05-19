@@ -7,7 +7,6 @@ User=governance
 Group=governance
 WorkingDirectory=/opt/governance-portal
 Environment=SERVER_PORT=18080
-Environment=GOVERNANCE_SAMPLE_DATA_ENABLED=true
 # 운영 DB 사용 시 아래 환경변수를 설정한다. H2 콘솔은 운영에서 반드시 비활성화한다.
 # Oracle/ADB 등 외부 DB 전환 시 백엔드 빌드에 해당 JDBC 드라이버 의존성도 추가해야 한다.
 # Environment=GOVERNANCE_DATASOURCE_URL=jdbc:oracle:thin:@//db-host:1521/ORCLPDB
