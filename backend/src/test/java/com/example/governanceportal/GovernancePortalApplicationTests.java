@@ -36,6 +36,36 @@ class GovernancePortalApplicationTests {
     }
 
     @Test
+    void localDevUserReceivesTemporaryPermissions() throws Exception {
+        mockMvc.perform(get("/api/me"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.userId").value("local-test"))
+            .andExpect(jsonPath("$.authenticated").value(true))
+            .andExpect(jsonPath("$.permissions[?(@ == 'DASHBOARD_READ')]").exists())
+            .andExpect(jsonPath("$.permissions[?(@ == 'BATCH_ADMIN')]").exists());
+    }
+
+    @Test
+    void batchJobCanBeListedAndRunManually() throws Exception {
+        mockMvc.perform(get("/api/admin/batch/jobs"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].name").value("sampleMaintenanceJob"));
+
+        mockMvc.perform(post("/api/admin/batch/jobs/sampleMaintenanceJob/run")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "parameters": {
+                        "requestedBy": "test"
+                      }
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.jobName").value("sampleMaintenanceJob"))
+            .andExpect(jsonPath("$.status").value("COMPLETED"));
+    }
+
+    @Test
     void sampleCrudWorks() throws Exception {
         Integer id = mockMvc.perform(post("/api/samples")
                 .contentType(MediaType.APPLICATION_JSON)

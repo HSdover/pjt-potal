@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { ElCard, ElDescriptions, ElDescriptionsItem, ElMessage, ElTag } from "element-plus";
+import { ElCard, ElDescriptions, ElDescriptionsItem, ElMessage } from "element-plus";
 import AuthButton from "@/shared/components/auth/AuthButton.vue";
+import { PortalTag } from "@/shared/components/tags";
 import { fetchDetail, fetchDetailList } from "../api";
 import type { RefDetailItem } from "../types";
 
@@ -89,7 +90,7 @@ onMounted(loadList);
             <ElDescriptionsItem label="분류">{{ selected.category }}</ElDescriptionsItem>
             <ElDescriptionsItem label="담당">{{ selected.ownerName }}</ElDescriptionsItem>
             <ElDescriptionsItem label="상태">
-              <ElTag :type="statusTagType" effect="plain">{{ selected.status }}</ElTag>
+              <PortalTag :type="statusTagType" effect="plain">{{ selected.status }}</PortalTag>
             </ElDescriptionsItem>
             <ElDescriptionsItem label="생성일시" :span="2">{{ formatDate(selected.createdAt) }}</ElDescriptionsItem>
             <ElDescriptionsItem label="설명" :span="2">{{ selected.description }}</ElDescriptionsItem>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { ElMessage, ElTag } from "element-plus";
+import { ElMessage } from "element-plus";
+import { PortalTag } from "@/shared/components/tags";
 import {
   fetchDashboardData,
   formatNumber,
@@ -75,7 +76,7 @@ onMounted(async () => {
         <p class="mt-2 text-sm text-blue-100">기준시 {{ data.asOf }}</p>
       </div>
       <div class="flex flex-wrap items-center gap-2 text-sm">
-        <ElTag :type="overallStatusType" effect="dark">{{ overallStatus }}</ElTag>
+        <PortalTag :type="overallStatusType" effect="dark">{{ overallStatus }}</PortalTag>
         <span class="rounded-full bg-white/10 px-3 py-1 font-semibold text-white">
           연계 정상 {{ normalIntegrationCount }} / {{ data.integrations.length }}
         </span>
@@ -95,7 +96,7 @@ onMounted(async () => {
               {{ formatNumber(metric.value) }}<span class="ml-1 text-sm font-semibold text-slate-500">{{ metric.unit }}</span>
             </div>
           </div>
-          <ElTag :type="metric.tone" size="small" effect="plain">{{ metric.delta }}</ElTag>
+          <PortalTag :type="metric.tone" size="small" effect="plain">{{ metric.delta }}</PortalTag>
         </div>
         <p class="mt-3 min-h-10 text-xs leading-5 text-slate-500">{{ metric.description }}</p>
       </article>
@@ -108,7 +109,7 @@ onMounted(async () => {
             <h2 class="portal-panel-title">외부 연계 상태</h2>
             <p class="portal-panel-subtitle">지연, 실패, backlog 기준</p>
           </div>
-          <ElTag effect="plain">실패 {{ failureTotal }}건</ElTag>
+          <PortalTag effect="plain">실패 {{ failureTotal }}건</PortalTag>
         </div>
 
         <div class="overflow-x-auto">
@@ -128,7 +129,7 @@ onMounted(async () => {
                 <td class="whitespace-nowrap py-3 pr-4 font-semibold text-slate-900">{{ item.systemName }}</td>
                 <td class="min-w-48 px-4 py-3 text-slate-600">{{ item.purpose }}</td>
                 <td class="whitespace-nowrap px-4 py-3">
-                  <ElTag :type="item.tone" size="small" effect="plain">{{ item.status }}</ElTag>
+                  <PortalTag :type="item.tone" size="small" effect="plain">{{ item.status }}</PortalTag>
                 </td>
                 <td class="whitespace-nowrap px-4 py-3 text-right text-slate-600">
                   {{ item.latencyMs > 0 ? `${formatNumber(item.latencyMs)}ms` : "-" }}
@@ -149,7 +150,7 @@ onMounted(async () => {
             <h2 class="portal-panel-title">승인/요청 큐</h2>
             <p class="portal-panel-subtitle">처리 대기 {{ approvalTotal }}건</p>
           </div>
-          <ElTag type="warning" effect="plain">SLA 관리</ElTag>
+          <PortalTag type="warning" effect="plain">SLA 관리</PortalTag>
         </div>
 
         <div class="divide-y divide-slate-100">
@@ -174,7 +175,7 @@ onMounted(async () => {
             <h2 class="portal-panel-title">실패/재처리</h2>
             <p class="portal-panel-subtitle">외부 REST 연계와 webhook 처리 결과</p>
           </div>
-          <ElTag type="danger" effect="plain">DLQ 후보</ElTag>
+          <PortalTag type="danger" effect="plain">DLQ 후보</PortalTag>
         </div>
 
         <div class="divide-y divide-slate-100">
@@ -184,7 +185,7 @@ onMounted(async () => {
                 <div class="font-semibold text-slate-900">{{ job.jobName }}</div>
                 <div class="mt-1 text-xs text-slate-500">{{ job.sourceSystem }} · 마지막 실패 {{ job.lastFailedAt }}</div>
               </div>
-              <ElTag :type="job.tone" effect="plain">{{ job.failedCount }}건</ElTag>
+              <PortalTag :type="job.tone" effect="plain">{{ job.failedCount }}건</PortalTag>
             </div>
             <div class="mt-2 text-sm text-slate-600">{{ job.nextAction }}</div>
           </div>
@@ -210,7 +211,7 @@ onMounted(async () => {
                 <div class="text-lg font-bold text-slate-950">{{ formatNumber(agent.todayAccessCount) }}</div>
                 <div class="text-xs text-slate-500">접근</div>
               </div>
-              <ElTag :type="agent.tone" size="small" effect="plain">{{ agent.status }}</ElTag>
+              <PortalTag :type="agent.tone" size="small" effect="plain">{{ agent.status }}</PortalTag>
             </div>
           </div>
         </div>

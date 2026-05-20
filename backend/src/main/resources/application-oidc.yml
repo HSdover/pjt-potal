@@ -1,0 +1,22 @@
+# BFF(OAuth2 Client) 프로파일. 기본 비활성이며, SSO 연동 준비가 되면 활성화한다.
+#   활성화: SPRING_PROFILES_ACTIVE=oidc (또는 ...,oidc)
+#   활성화하려면 아래 환경변수가 반드시 채워져야 정상 기동된다(미설정 시 기동 실패).
+#
+# 실제 값(client-id/secret, issuer-uri, 콜백 경로)은 IAM/KNOX팀 스펙 확인 후 채운다.
+# registration id 'knox'는 임의 이름이며, 로그인 진입 경로 /oauth2/authorization/knox 에 그대로 쓰인다.
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          knox:
+            client-id: ${OIDC_CLIENT_ID:}
+            client-secret: ${OIDC_CLIENT_SECRET:}
+            authorization-grant-type: authorization_code
+            scope: openid, profile, email
+            redirect-uri: "{baseUrl}/login/oauth2/code/knox"
+        provider:
+          knox:
+            # OIDC discovery를 지원하면 issuer-uri 하나로 충분하다.
+            # SAML이거나 discovery 미지원이면 authorization-uri/token-uri/jwk-set-uri를 개별 지정해야 한다.
+            issuer-uri: ${OIDC_ISSUER_URI:}

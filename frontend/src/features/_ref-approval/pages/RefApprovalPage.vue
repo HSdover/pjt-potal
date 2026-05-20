@@ -4,13 +4,12 @@ import {
   ElCard,
   ElDescriptions,
   ElDescriptionsItem,
-  ElInput,
   ElMessage,
-  ElTag,
   ElTimeline,
   ElTimelineItem,
 } from "element-plus";
 import AuthButton from "@/shared/components/auth/AuthButton.vue";
+import { PortalTag, PortalTextarea } from "@/shared/components/tags";
 import { approve, fetchApproval, fetchApprovalList, reject } from "../api";
 import type { RefApprovalItem } from "../types";
 
@@ -156,7 +155,7 @@ onMounted(loadList);
           <template #header>
             <div class="flex items-center justify-between">
               <span>신청 정보</span>
-              <ElTag :type="statusTagType" effect="plain">{{ selected.status }}</ElTag>
+              <PortalTag :type="statusTagType" effect="plain">{{ selected.status }}</PortalTag>
             </div>
           </template>
 
@@ -173,14 +172,13 @@ onMounted(loadList);
         <ElCard class="portal-card" shadow="never">
           <template #header>의사 결정</template>
           <div class="space-y-3">
-            <ElInput
+            <PortalTextarea
               v-model="comment"
-              type="textarea"
               :rows="3"
               :disabled="!canDecide || acting"
               placeholder="검토/반려 사유를 입력하세요 (반려 시 필수)"
-              maxlength="500"
-              show-word-limit
+              :maxlength="500"
+              show-count
             />
             <div class="flex justify-end gap-2">
               <AuthButton type="danger" :disabled="!canDecide || acting" @click="doReject">반려</AuthButton>

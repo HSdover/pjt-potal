@@ -1,8 +1,8 @@
 <script setup lang="ts" generic="TRow extends object">
 import { computed } from "vue";
-import { ElPagination } from "element-plus";
 import { AgGridVue } from "ag-grid-vue3";
 import type { ColDef, RowClickedEvent, SortChangedEvent } from "ag-grid-community";
+import PortalPagination from "@/shared/components/tags/PortalPagination.vue";
 import type { ListSort } from "@/shared/types/list";
 
 const props = withDefaults(defineProps<{
@@ -83,13 +83,11 @@ function onSortChanged(event: SortChangedEvent) {
     </div>
     <div class="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
       <span class="text-xs font-semibold text-slate-500">총 {{ totalCount.toLocaleString() }}건</span>
-      <ElPagination
+      <PortalPagination
         v-model:current-page="currentPage"
         v-model:page-size="currentPageSize"
         :total="totalCount"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="sizes, prev, pager, next"
-        background
+        :page-size-options="[10, 20, 50, 100]"
       />
     </div>
   </div>

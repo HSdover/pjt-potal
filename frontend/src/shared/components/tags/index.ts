@@ -8,6 +8,7 @@ export { default as PortalFilePicker } from "./PortalFilePicker.vue";
 export { default as PortalPagination } from "./PortalPagination.vue";
 export { default as PortalRadioGroup } from "./PortalRadioGroup.vue";
 export { default as PortalSelect } from "./PortalSelect.vue";
+export { default as PortalTag } from "./PortalTag.vue";
 export { default as PortalTextarea } from "./PortalTextarea.vue";
 export { default as PortalTextInput } from "./PortalTextInput.vue";
 export type { PortalCheckOption } from "./PortalCheckboxGroup.vue";

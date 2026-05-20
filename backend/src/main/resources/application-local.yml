@@ -1,4 +1,21 @@
 app:
+  auth:
+    local-dev-user:
+      enabled: true
+      user-id: local-dev
+      display-name: Local Developer
+      permissions:
+        - DASHBOARD_READ
+        - SAMPLE_READ
+        - SAMPLE_CREATE
+        - SAMPLE_UPDATE
+        - SAMPLE_DELETE
+        - SAMPLE_JPA_READ
+        - SAMPLE_JPA_CREATE
+        - SAMPLE_JPA_UPDATE
+        - SAMPLE_JPA_DELETE
+        - REF_VIEW
+        - BATCH_ADMIN
   frontend-dev-server:
     enabled: true
     restart: true

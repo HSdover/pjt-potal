@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { ElCard, ElMessage, ElTag } from "element-plus";
+import { ElCard, ElMessage } from "element-plus";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, LineChart, PieChart } from "echarts/charts";
@@ -11,6 +11,7 @@ import {
   TooltipComponent,
 } from "echarts/components";
 import VChart from "vue-echarts";
+import { PortalTag } from "@/shared/components/tags";
 import { fetchDashboard } from "../api";
 import type { RefDashboardData } from "../types";
 
@@ -131,7 +132,7 @@ onMounted(load);
         <div v-for="kpi in data.kpis" :key="kpi.label" class="portal-kpi-card p-4 pt-5">
           <div class="flex items-center justify-between">
             <span class="text-xs font-semibold text-slate-500">{{ kpi.label }}</span>
-            <ElTag size="small" effect="plain">{{ kpi.trend }}</ElTag>
+            <PortalTag size="small" effect="plain">{{ kpi.trend }}</PortalTag>
           </div>
           <div class="mt-2 text-2xl font-bold text-slate-900">
             {{ formatNumber(kpi.value) }}<span class="ml-1 text-sm font-semibold text-slate-500">{{ kpi.unit }}</span>

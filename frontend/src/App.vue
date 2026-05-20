@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import { ElMenu, ElMenuItem } from "element-plus";
+import PortalButton from "@/shared/components/tags/PortalButton.vue";
 import { hasPermission } from "@/shared/auth/permissions";
 
 const route = useRoute();
@@ -46,9 +47,9 @@ function handleSelect(key: string) {
           </div>
         </div>
         <div class="portal-header-actions">
-          <button type="button" class="portal-quick-button">신청 현황</button>
-          <button type="button" class="portal-quick-button">운영 알림</button>
-          <button type="button" class="portal-quick-button primary">Quick Menu</button>
+          <PortalButton variant="secondary">신청 현황</PortalButton>
+          <PortalButton variant="secondary">운영 알림</PortalButton>
+          <PortalButton variant="primary">Quick Menu</PortalButton>
         </div>
       </div>
 

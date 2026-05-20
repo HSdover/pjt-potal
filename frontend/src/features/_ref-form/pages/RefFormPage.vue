@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import useVuelidate from "@vuelidate/core";
-import { ElCard, ElDatePicker, ElForm, ElFormItem, ElInput, ElMessage, ElOption, ElSelect } from "element-plus";
+import { ElCard, ElForm, ElFormItem, ElMessage } from "element-plus";
 import AuthButton from "@/shared/components/auth/AuthButton.vue";
+import { PortalDateInput, PortalSelect, PortalTextInput, PortalTextarea } from "@/shared/components/tags";
 import { fieldError, maxLengthText, requiredText } from "@/shared/validation/vuelidate";
 import { createForm, fetchFormList, updateForm } from "../api";
 import type { RefFormItem, RefFormSaveRequest } from "../types";
@@ -24,6 +25,8 @@ const form = reactive<RefFormSaveRequest>({
 
 const categories = ["기준정보", "정책", "보안", "운영"];
 const priorities = ["HIGH", "NORMAL", "LOW"];
+const categoryOptions = categories.map((value) => ({ label: value, value }));
+const priorityOptions = priorities.map((value) => ({ label: value, value }));
 
 const rules = computed(() => ({
   name: {
@@ -41,6 +44,12 @@ const rules = computed(() => ({
 const v$ = useVuelidate(rules, form, { $autoDirty: true });
 
 const pageTitle = computed(() => (mode.value === "create" ? "신규 등록" : `수정: #${editingId.value ?? ""}`));
+const targetDateModel = computed({
+  get: () => form.targetDate ?? "",
+  set: (value: string) => {
+    form.targetDate = value || null;
+  },
+});
 
 function resetForm() {
   form.name = "";
@@ -126,29 +135,24 @@ onMounted(loadList);
         <ElForm label-position="top" :model="form">
           <div class="grid gap-4 md:grid-cols-2">
             <ElFormItem label="제목" required :error="fieldError(v$.name)">
-              <ElInput v-model="form.name" maxlength="100" show-word-limit @blur="v$.name.$touch()" />
+              <PortalTextInput v-model="form.name" :maxlength="100" show-count @blur="v$.name.$touch()" />
             </ElFormItem>
             <ElFormItem label="분류" required :error="fieldError(v$.category)">
-              <ElSelect v-model="form.category" placeholder="선택" class="!w-full" @change="v$.category.$touch()">
-                <ElOption v-for="opt in categories" :key="opt" :label="opt" :value="opt" />
-              </ElSelect>
+              <PortalSelect v-model="form.category" :options="categoryOptions" placeholder="선택" @change="v$.category.$touch()" />
             </ElFormItem>
             <ElFormItem label="목표일">
-              <ElDatePicker v-model="form.targetDate" type="date" value-format="YYYY-MM-DD" placeholder="선택" class="!w-full" />
+              <PortalDateInput v-model="targetDateModel" />
             </ElFormItem>
             <ElFormItem label="우선순위">
-              <ElSelect v-model="form.priority" class="!w-full">
-                <ElOption v-for="opt in priorities" :key="opt" :label="opt" :value="opt" />
-              </ElSelect>
+              <PortalSelect v-model="form.priority" :options="priorityOptions" />
             </ElFormItem>
           </div>
           <ElFormItem label="설명" :error="fieldError(v$.description)">
-            <ElInput
+            <PortalTextarea
               v-model="form.description"
-              type="textarea"
               :rows="5"
-              maxlength="1000"
-              show-word-limit
+              :maxlength="1000"
+              show-count
               @blur="v$.description.$touch()"
             />
           </ElFormItem>

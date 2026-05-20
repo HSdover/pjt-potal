@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import useVuelidate from "@vuelidate/core";
-import { ElDialog, ElForm, ElFormItem, ElInput, ElMessage, ElMessageBox } from "element-plus";
+import { ElDialog, ElForm, ElFormItem, ElMessage, ElMessageBox } from "element-plus";
 import { Delete, Edit, Plus, Search } from "@element-plus/icons-vue";
 import AuthButton from "@/shared/components/auth/AuthButton.vue";
+import { PortalTextInput, PortalTextarea } from "@/shared/components/tags";
 import BaseGrid from "@/shared/components/grid/BaseGrid.vue";
 import SearchPanel from "@/shared/components/search/SearchPanel.vue";
 import GridPageLayout from "@/components/GridPageLayout.vue";
@@ -190,9 +191,8 @@ onMounted(load);
   <GridPageLayout title="샘플 목록" description="샘플 데이터를 검색하고 관리합니다.">
     <template #toolbar>
       <SearchPanel>
-        <ElInput
+        <PortalTextInput
           v-model="request.filters.keyword"
-          :prefix-icon="Search"
           clearable
           placeholder="검색어"
           class="w-full md:!w-80"
@@ -239,15 +239,14 @@ onMounted(load);
     <ElDialog v-model="dialogVisible" :title="dialogTitle" width="480px">
       <ElForm label-position="top">
         <ElFormItem label="이름" required :error="fieldError(v$.name)">
-          <ElInput v-model="form.name" maxlength="200" show-word-limit @blur="v$.name.$touch()" />
+          <PortalTextInput v-model="form.name" :maxlength="200" show-count @blur="v$.name.$touch()" />
         </ElFormItem>
         <ElFormItem label="설명" :error="fieldError(v$.description)">
-          <ElInput
+          <PortalTextarea
             v-model="form.description"
-            type="textarea"
             :rows="4"
-            maxlength="1000"
-            show-word-limit
+            :maxlength="1000"
+            show-count
             @blur="v$.description.$touch()"
           />
         </ElFormItem>

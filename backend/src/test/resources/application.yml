@@ -1,4 +1,9 @@
 spring:
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: embedded
   datasource:
     url: jdbc:h2:mem:governance_test;MODE=Oracle;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
@@ -15,3 +20,22 @@ management:
   health:
     redis:
       enabled: false
+
+app:
+  auth:
+    local-dev-user:
+      enabled: true
+      user-id: local-test
+      display-name: Local Test User
+      permissions:
+        - DASHBOARD_READ
+        - SAMPLE_READ
+        - SAMPLE_CREATE
+        - SAMPLE_UPDATE
+        - SAMPLE_DELETE
+        - SAMPLE_JPA_READ
+        - SAMPLE_JPA_CREATE
+        - SAMPLE_JPA_UPDATE
+        - SAMPLE_JPA_DELETE
+        - REF_VIEW
+        - BATCH_ADMIN

@@ -1,5 +1,18 @@
 import { ApiError } from "./api-error";
 
+// BFF 로그인 진입 경로(oidc 프로파일에서만 의미). registration id 'knox'와 일치해야 한다.
+const LOGIN_ENTRY_PATH = "/oauth2/authorization/knox";
+let redirectingToLogin = false;
+
+function redirectToLogin() {
+  // 로컬 permitAll 모드에서는 401이 발생하지 않아 호출되지 않는다.
+  if (redirectingToLogin) {
+    return;
+  }
+  redirectingToLogin = true;
+  window.location.href = LOGIN_ENTRY_PATH;
+}
+
 type HttpParams = Record<string, unknown>;
 
 type HttpOptions = {
@@ -10,6 +23,29 @@ type HttpOptions = {
 type HttpBodyOptions = {
   headers?: HeadersInit;
 };
+
+function readCookie(name: string) {
+  return document.cookie
+    .split("; ")
+    .find((item) => item.startsWith(`${name}=`))
+    ?.split("=")
+    .slice(1)
+    .join("=");
+}
+
+function withCsrfHeader(headers?: HeadersInit): HeadersInit {
+  const csrfToken = readCookie("XSRF-TOKEN");
+  if (!csrfToken) {
+    return {
+      ...headers,
+    };
+  }
+
+  return {
+    "X-XSRF-TOKEN": decodeURIComponent(csrfToken),
+    ...headers,
+  };
+}
 
 function appendParams(url: URL, params?: HttpParams) {
   if (!params) {
@@ -36,6 +72,11 @@ async function parseResponse<T>(response: Response): Promise<T> {
   const body = isJson ? await response.json() : await response.text();
 
   if (!response.ok) {
+    if (response.status === 401) {
+      // 세션 만료/미인증(BFF). 로그인으로 진입시킨다. 로컬 모드에서는 발생하지 않는다.
+      redirectToLogin();
+    }
+
     const message =
       typeof body === "object" && body && "message" in body
         ? String(body.message)
@@ -75,7 +116,7 @@ export const http = {
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        ...options.headers,
+        ...withCsrfHeader(options.headers),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
@@ -91,7 +132,7 @@ export const http = {
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        ...options.headers,
+        ...withCsrfHeader(options.headers),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
@@ -106,7 +147,7 @@ export const http = {
       method: "DELETE",
       headers: {
         Accept: "application/json",
-        ...options.headers,
+        ...withCsrfHeader(options.headers),
       },
     });
 
