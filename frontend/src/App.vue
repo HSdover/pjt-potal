@@ -1,26 +1,64 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { RouterView, useRoute, useRouter } from "vue-router";
-import { ElMenu, ElMenuItem } from "element-plus";
+import { ElMenu, ElMenuItem, ElSubMenu } from "element-plus";
 import PortalButton from "@/shared/components/tags/PortalButton.vue";
 import { hasPermission } from "@/shared/auth/permissions";
 
 const route = useRoute();
 const router = useRouter();
 
+type MenuItem = {
+  path: string;
+  title: string;
+  order: number;
+};
+
+type MenuGroup = {
+  key: string;
+  title: string;
+  order: number;
+  items: MenuItem[];
+};
+
 const activeMenu = computed(() => route.path);
-const menuItems = computed(() =>
+const menuGroups = computed(() => {
+  const groups = new Map<string, MenuGroup>();
+
   router.getRoutes()
     .filter((item) => item.meta.menu && hasPermission(item.meta.auth as string | string[] | undefined))
-    .sort((left, right) => Number(left.meta.order ?? 0) - Number(right.meta.order ?? 0))
-    .map((item) => ({
-      path: item.path,
-      title: String(item.meta.title ?? item.name ?? item.path),
-    })),
-);
+    .forEach((item) => {
+      const groupKey = String(item.meta.menuDomain ?? item.path);
+      const groupTitle = String(item.meta.menuDomainTitle ?? item.meta.title ?? item.name ?? item.path);
+      const groupOrder = Number(item.meta.menuDomainOrder ?? item.meta.order ?? 0);
+      const screenTitle = String(item.meta.menuTitle ?? item.meta.title ?? item.name ?? item.path);
+
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, {
+          key: groupKey,
+          title: groupTitle,
+          order: groupOrder,
+          items: [],
+        });
+      }
+
+      groups.get(groupKey)?.items.push({
+        path: item.path,
+        title: screenTitle,
+        order: Number(item.meta.order ?? 0),
+      });
+    });
+
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      items: group.items.sort((left, right) => left.order - right.order),
+    }))
+    .sort((left, right) => left.order - right.order);
+});
 
 function handleSelect(key: string) {
-  router.push(key);
+  void router.push(key);
 }
 </script>
 
@@ -62,10 +100,17 @@ function handleSelect(key: string) {
             class="portal-menu"
             @select="handleSelect"
           >
-            <!-- [12. 메뉴, 라우터, 권한 표준] 메뉴 항목은 라우트 meta 설정에서 생성한다. -->
-            <ElMenuItem v-for="item in menuItems" :key="item.path" :index="item.path">
-              {{ item.title }}
-            </ElMenuItem>
+            <template v-for="group in menuGroups" :key="group.key">
+              <ElMenuItem v-if="group.items.length === 1" :index="group.items[0].path">
+                {{ group.title }}
+              </ElMenuItem>
+              <ElSubMenu v-else :index="group.key">
+                <template #title>{{ group.title }}</template>
+                <ElMenuItem v-for="item in group.items" :key="item.path" :index="item.path">
+                  {{ item.title }}
+                </ElMenuItem>
+              </ElSubMenu>
+            </template>
           </ElMenu>
         </div>
       </nav>

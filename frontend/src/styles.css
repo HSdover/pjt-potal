@@ -194,7 +194,8 @@ textarea {
   background: transparent;
 }
 
-.portal-menu.el-menu--horizontal > .el-menu-item {
+.portal-menu.el-menu--horizontal > .el-menu-item,
+.portal-menu.el-menu--horizontal > .el-sub-menu .el-sub-menu__title {
   height: 50px;
   border-bottom: 3px solid transparent;
   color: #334155;
@@ -202,12 +203,14 @@ textarea {
   font-weight: 800;
 }
 
-.portal-menu.el-menu--horizontal > .el-menu-item:hover {
+.portal-menu.el-menu--horizontal > .el-menu-item:hover,
+.portal-menu.el-menu--horizontal > .el-sub-menu .el-sub-menu__title:hover {
   background: var(--portal-surface-blue);
   color: var(--portal-blue);
 }
 
-.portal-menu.el-menu--horizontal > .el-menu-item.is-active {
+.portal-menu.el-menu--horizontal > .el-menu-item.is-active,
+.portal-menu.el-menu--horizontal > .el-sub-menu.is-active .el-sub-menu__title {
   border-bottom-color: var(--portal-blue);
   background: #f6faff;
   color: var(--portal-blue);
