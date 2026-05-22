@@ -173,6 +173,19 @@ H2 콘솔 접속 정보:
 - `GOVERNANCE_FRONTEND_DEV_SERVER_BUILD_ARGS`: 프론트 빌드 인자. 기본값은 `run,build`.
 - `VITE_API_PROXY_TARGET`: 프론트 개발 서버의 `/api` 프록시 대상. 기본값은 `http://127.0.0.1:18080`.
 
+Oracle DB 사용 시에는 런타임에 `ojdbc11` 드라이버가 포함됩니다. 운영 환경에서는 아래처럼 datasource 값을 외부 환경변수 또는 env 파일로 주입합니다.
+
+```bash
+GOVERNANCE_DATASOURCE_URL=jdbc:oracle:thin:@//db-host:1521/service
+GOVERNANCE_DATASOURCE_DRIVER=oracle.jdbc.OracleDriver
+GOVERNANCE_DATASOURCE_USERNAME=appuser
+GOVERNANCE_DATASOURCE_PASSWORD=change-me
+GOVERNANCE_SQL_INIT_MODE=never
+GOVERNANCE_H2_CONSOLE_ENABLED=false
+```
+
+Oracle Autonomous Database처럼 Wallet 기반 접속이 필요하면 Wallet 파일 위치와 추가 보안 companion JAR 필요 여부를 DBA/OCI 담당자와 확인합니다.
+
 ## 오프라인 빌드
 
 오프라인 빌드는 내부망 PC의 `PATH`에 설치된 Node/npm/Gradle에 의존하지 않습니다.

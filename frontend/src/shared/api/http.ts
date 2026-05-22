@@ -1,11 +1,10 @@
 import { ApiError } from "./api-error";
 
-// BFF 로그인 진입 경로(oidc 프로파일에서만 의미). registration id 'knox'와 일치해야 한다.
-const LOGIN_ENTRY_PATH = "/oauth2/authorization/knox";
+// BFF SAML login entry path. It must match the registration id 'knox'.
+const LOGIN_ENTRY_PATH = import.meta.env.VITE_LOGIN_ENTRY_PATH ?? "/saml2/authenticate/knox";
 let redirectingToLogin = false;
 
 function redirectToLogin() {
-  // 로컬 permitAll 모드에서는 401이 발생하지 않아 호출되지 않는다.
   if (redirectingToLogin) {
     return;
   }
@@ -73,14 +72,13 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
   if (!response.ok) {
     if (response.status === 401) {
-      // 세션 만료/미인증(BFF). 로그인으로 진입시킨다. 로컬 모드에서는 발생하지 않는다.
       redirectToLogin();
     }
 
     const message =
       typeof body === "object" && body && "message" in body
         ? String(body.message)
-        : "API 요청 처리 중 오류가 발생했습니다.";
+        : "API request failed.";
 
     throw new ApiError(message, {
       status: response.status,
@@ -91,7 +89,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return body as T;
 }
 
-// [8. 공통 API 클라이언트] API 호출, JSON 파싱, 공통 오류 변환을 한 곳으로 모은다.
+// Shared API client for JSON calls, common error handling, and CSRF headers.
 export const http = {
   async get<T>(path: string, options: HttpOptions = {}) {
     const url = new URL(path, window.location.origin);

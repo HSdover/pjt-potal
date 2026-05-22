@@ -1,0 +1,48 @@
+# SAML2 Service Provider profile.
+# Activate with: SPRING_PROFILES_ACTIVE=saml
+#
+# IAM/KNOX must provide the IdP metadata URL. The registration id 'knox'
+# is used in the login entry path: /saml2/authenticate/knox.
+spring:
+  security:
+    saml2:
+      relyingparty:
+        registration:
+          knox:
+            entity-id: ${SAML_SP_ENTITY_ID:{baseUrl}/saml2/service-provider-metadata/{registrationId}}
+            assertion-consumer-service-location: ${SAML_SP_ACS_LOCATION:{baseUrl}/login/saml2/sso/{registrationId}}
+            assertingparty:
+              metadata-uri: ${SAML_IDP_METADATA_URI}
+
+# Portal permission mapping for SAML-authenticated users.
+# Placeholders until IAM/KNOX confirms the real group attribute names and group values.
+app:
+  auth:
+    saml:
+      # SAML attributes whose values are already internal portal permission codes.
+      # Keep empty unless IAM guarantees values match internal codes
+      # (raw attribute values are NOT trusted as permissions by default).
+      direct-permission-attributes: []
+      # SAML attributes that carry IdP group/role names. Confirm exact names with IAM.
+      group-attributes:
+        - roles
+        - groups
+        - memberOf
+      # IdP group name -> internal portal permission codes.
+      # Group names may arrive as plain CN or full LDAP DN (CN=...,OU=...); both match by common name.
+      # Replace the examples below with the real IAM group names, then uncomment.
+      group-permission-mappings:
+        # KNOX_DG_PORTAL_ADMIN:
+        #   - DASHBOARD_READ
+        #   - SAMPLE_READ
+        #   - SAMPLE_CREATE
+        #   - SAMPLE_UPDATE
+        #   - SAMPLE_DELETE
+        #   - SAMPLE_JPA_READ
+        #   - REF_VIEW
+        #   - BATCH_ADMIN
+        # KNOX_DG_PORTAL_VIEWER:
+        #   - DASHBOARD_READ
+        #   - SAMPLE_READ
+        #   - SAMPLE_JPA_READ
+        #   - REF_VIEW

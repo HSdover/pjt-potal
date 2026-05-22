@@ -68,6 +68,13 @@ app:
       user-id: ${GOVERNANCE_AUTH_LOCAL_DEV_USER_ID:local-dev}
       display-name: ${GOVERNANCE_AUTH_LOCAL_DEV_USER_DISPLAY_NAME:Local Developer}
       permissions: []
+    saml:
+      direct-permission-attributes: []
+      group-attributes:
+        - roles
+        - groups
+        - memberOf
+      group-permission-mappings: {}
   batch:
     scheduler:
       enabled: ${GOVERNANCE_BATCH_SCHEDULER_ENABLED:false}

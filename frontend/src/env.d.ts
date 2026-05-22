@@ -3,6 +3,7 @@
 interface ImportMetaEnv {
   readonly VITE_REFERENCE_MENU_ENABLED?: string;
   readonly VITE_API_PROXY_TARGET?: string;
+  readonly VITE_LOGIN_ENTRY_PATH?: string;
 }
 
 interface ImportMeta {
