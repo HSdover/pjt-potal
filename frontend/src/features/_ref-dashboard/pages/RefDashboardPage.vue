@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { ElCard, ElMessage } from "element-plus";
+import { ElCard } from "element-plus";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart, LineChart, PieChart } from "echarts/charts";
@@ -12,6 +12,7 @@ import {
 } from "echarts/components";
 import VChart from "vue-echarts";
 import { PortalTag } from "@/shared/components/tags";
+import { handleApiError } from "@/shared/api/error-handler";
 import { fetchDashboard } from "../api";
 import type { RefDashboardData } from "../types";
 
@@ -35,7 +36,7 @@ async function load() {
   try {
     data.value = await fetchDashboard();
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "대시보드 데이터 조회에 실패했습니다.");
+    handleApiError(error, "대시보드 데이터 조회에 실패했습니다.");
   } finally {
     loading.value = false;
   }

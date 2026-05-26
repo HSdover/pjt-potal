@@ -4,8 +4,10 @@
 
 ## 기술 구조
 
-- Frontend: Vue 3, TypeScript, Vite, Element Plus, AG Grid
-- Backend: Java 21, Spring Boot 3.3, embedded Tomcat, H2 sample DB
+- Frontend: Vue 3, TypeScript, Vite, Element Plus, AG Grid, Vuelidate, ESLint
+- Backend: Java 21, Spring Boot 3.3, embedded Tomcat, Spring Security SAML2, Spring Batch, JPA/MyBatis/QueryDSL
+- DB/Cache: H2 local DB, Oracle JDBC(ojdbc11), Redis cache
+- Integration: RestClient + HTTP Interface 기반 외부 REST API 공통 클라이언트
 - 운영 Web: Nginx
 - 운영 실행: Spring Boot executable JAR + systemd
 
@@ -16,6 +18,7 @@ Client
   -> Nginx
      - /, /assets/*       : frontend/dist 정적 파일 서빙
      - /api/*             : Spring Boot API로 reverse proxy
+     - /login/*, /saml2/* : SAML 로그인/ACS proxy
      - /api-docs/*        : Springdoc API 문서 proxy
      - /swagger-ui*       : Swagger UI proxy
      - /actuator/*        : Actuator proxy
@@ -128,6 +131,9 @@ spec 파일은 `tools/generator/pages/{name}.json`에 둡니다.
 
 Nginx 설정 예시는 `infra/nginx/governance-portal.conf`에 있습니다.
 systemd 서비스 예시는 `infra/systemd/governance-portal.service`에 있습니다.
+운영 env 템플릿은 `infra/env/governance-portal.env.template`에 있습니다.
+
+운영 Nginx는 `X-Request-Id`를 백엔드로 전달합니다. 백엔드는 같은 값을 MDC 로그와 응답 헤더에 남기므로 장애 대응 시 Nginx access log, Spring Boot 로그, 외부 API 로그를 같은 requestId로 조회합니다.
 
 ## 주요 URL
 
@@ -154,7 +160,7 @@ H2 콘솔 접속 정보:
 - `GOVERNANCE_DATASOURCE_PASSWORD`: DB 비밀번호.
 - `GOVERNANCE_SQL_INIT_MODE`: SQL 초기화 모드. 기본값은 `embedded`.
 - `GOVERNANCE_H2_CONSOLE_ENABLED`: H2 console 사용 여부. 기본값은 `true`.
-- `GOVERNANCE_CACHE_TYPE`: Spring cache 구현. 기본값은 `simple`, Redis 사용 시 `redis`.
+- `GOVERNANCE_CACHE_TYPE`: Spring cache 구현. 기본값은 `redis`. 로컬에서 Redis 없이 실행할 때는 `local` profile의 기본값 `simple`을 사용합니다.
 - `GOVERNANCE_CACHE_REDIS_TTL`: Redis cache TTL. 기본값은 `300s`.
 - `GOVERNANCE_CACHE_REDIS_KEY_PREFIX`: Redis cache key prefix. 기본값은 `governance:`.
 - `GOVERNANCE_REDIS_HOST`: Redis host. 기본값은 `127.0.0.1`.
@@ -162,7 +168,10 @@ H2 콘솔 접속 정보:
 - `GOVERNANCE_REDIS_DATABASE`: Redis database index. 기본값은 `0`.
 - `GOVERNANCE_REDIS_PASSWORD`: Redis password.
 - `GOVERNANCE_REDIS_TIMEOUT`: Redis connection timeout. 기본값은 `2s`.
-- `GOVERNANCE_REDIS_HEALTH_ENABLED`: Actuator Redis health check 사용 여부. 기본값은 `false`.
+- `GOVERNANCE_REDIS_HEALTH_ENABLED`: Actuator Redis health check 사용 여부. 기본값은 `true`. `local` profile은 기본값 `false`.
+- `GOVERNANCE_EXTERNAL_API_CONNECT_TIMEOUT`: 외부 REST API connect timeout. 기본값은 `3s`.
+- `GOVERNANCE_EXTERNAL_API_READ_TIMEOUT`: 외부 REST API read timeout. 기본값은 `10s`.
+- `GOVERNANCE_EXTERNAL_API_LOGGING_ENABLED`: 외부 REST API 요약 로그 사용 여부. 기본값은 `true`.
 - `GOVERNANCE_FRONTEND_DEV_SERVER_ENABLED`: 백엔드 시작 시 프론트 dev server 실행 여부. 기본값은 `false`, `local` profile은 `true`.
 - `GOVERNANCE_FRONTEND_DEV_SERVER_RESTART`: 기존 프론트 dev server 종료 후 재시작 여부. 기본값은 `false`, `local` profile은 `true`.
 - `GOVERNANCE_FRONTEND_DEV_SERVER_BUILD_BEFORE_START`: 프론트 dev server 시작 전 `npm.cmd run build` 실행 여부. 기본값은 `false`, `local` profile은 `true`.
@@ -185,6 +194,14 @@ GOVERNANCE_H2_CONSOLE_ENABLED=false
 ```
 
 Oracle Autonomous Database처럼 Wallet 기반 접속이 필요하면 Wallet 파일 위치와 추가 보안 companion JAR 필요 여부를 DBA/OCI 담당자와 확인합니다.
+
+## 공통 예외/로깅/외부 API
+
+- 백엔드는 `GlobalExceptionHandler`로 API 오류 응답을 `timestamp`, `status`, `code`, `message`, `path`, `requestId`, `fieldErrors` 형태로 통일합니다.
+- `RequestIdFilter`는 `X-Request-Id`를 MDC와 응답 헤더에 반영합니다.
+- `ApplicationLoggingAspect`는 Controller/Service 실행 시간과 실패를 공통 로깅합니다.
+- 프론트는 `shared/api/http.ts`에서 오류 응답을 `ApiError`로 변환하고, 화면에서는 `handleApiError`를 사용합니다.
+- 외부 REST API는 공통 `RestClient` 또는 `ExternalApiClientFactory`를 통해 호출하며, body 전체가 아닌 externalSystem/api/status/elapsedMs/reason/requestId만 요약 로그로 남깁니다.
 
 ## 오프라인 빌드
 

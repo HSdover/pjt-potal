@@ -1,9 +1,12 @@
 # Project Start Strategy
 
 작성일: 2026-05-19
+최종수정: 2026-05-26
 
 이 문서는 프로젝트 투입 후 별도로 준비해야 할 기반 전략 초안이다.
 현재 화면 도메인/템플릿 분류 단계에서는 상세 설계하지 않고, 누락되지 않도록 작업 후보와 검토 항목만 정리한다.
+
+2026-05-26 기준으로 운영 실행 절차, SAML SSO, Oracle/Redis env, 예외/로깅, 외부 REST API 공통 클라이언트는 별도 문서와 코드에 반영되어 있다. 이 문서는 현장 투입 후 내부 정책과 실제 운영 값을 확정해야 하는 항목을 관리하는 용도로 유지한다.
 
 ## 1. 내부망 형상관리 전략
 
@@ -48,9 +51,13 @@
 | 실행 서버 | OCI Compute |
 | 프론트엔드 | 정적 빌드 산출물을 Nginx에서 서빙 |
 | 백엔드 | Spring Boot 실행 JAR |
+| DB | Oracle DB/ADB, H2는 local 개발용 |
+| 캐시 | Redis 운영 캐시, local profile은 simple cache |
 | 서비스 관리 | systemd |
 | 프록시 | Nginx reverse proxy |
-| 설정 관리 | 서버 환경변수 또는 별도 env 파일 |
+| 설정 관리 | `/opt/governance-portal/config/governance-portal.env` |
+| 인증 | SAML2 Service Provider, IAM/KNOX 연동 |
+| 외부 연계 | 백엔드 BFF + RestClient/HTTP Interface |
 
 ### 확인할 항목
 
@@ -61,8 +68,12 @@
 | 런타임 | JDK 설치 방식, Node/npm이 운영 서버에 필요한지 여부 |
 | 배포 위치 | frontend 정적 파일 경로, backend JAR 경로 |
 | 환경 설정 | datasource, 포트, 외부 연계 주소, secret 주입 방식 |
+| Redis | host, port, database, password, health check 정책 |
+| SAML | IdP metadata, ACS URL, 그룹 attribute, SLO 요구 여부 |
+| Oracle Batch | Spring Batch `BATCH_*` 메타테이블 선생성 방식 |
+| 외부 API | 시스템별 base URL, 인증 방식, timeout, egress 정책 |
 | 서비스 관리 | systemd unit, 재시작 정책, health check |
-| 로그 | 애플리케이션 로그, Nginx 로그, logrotate 기준 |
+| 로그 | requestId 기준 Nginx/Spring/외부 API 로그, logrotate 기준 |
 | 백업/롤백 | 이전 JAR/dist 유지, 장애 시 되돌리는 절차 |
 | 운영 보안 | TLS, 방화벽, 계정 권한, 운영 Swagger/Actuator 노출 여부 |
 
@@ -81,8 +92,11 @@
 | 항목 | 결정 |
 |---|---|
 | 내부망 형상관리 | 프로젝트 투입 후 내부 정책 확인 전까지 상세 설계 보류 |
-| Oracle Linux 운영 배포 | 운영 서버 구성 확인 전까지 상세 설계 보류 |
-| 현재 문서 역할 | 후속 작업 누락 방지를 위한 초안 |
+| Oracle Linux 운영 배포 | 기본 실행 절차는 `개선사항/운영작업문서-서버실행-AZ.md`에 상세화 완료. 현장 계정/경로/보안정책은 투입 후 치환 |
+| SAML SSO | SAML2 SP 방식 확정. IAM/KNOX 실제 metadata와 그룹 매핑은 투입 후 확정 |
+| 외부 REST API | 공통 RestClient/HTTP Interface 구조 확정. 시스템별 endpoint/인증/성공판정은 투입 후 확정 |
+| 예외/로깅 | GlobalExceptionHandler, requestId, AOP 로깅, 프론트 handleApiError 기준 반영 |
+| 현재 문서 역할 | 후속 작업 누락 방지를 위한 현장 확인 항목 관리 |
 
 ## 4. 현재 상세화하지 않는 항목
 
@@ -93,7 +107,7 @@
 |---|---|
 | API 엔드포인트, request/response | 상세 기능 설계 착수 후 |
 | 테이블명, 컬럼명, ERD | 데이터 저장 범위 확정 후 |
-| 권한 코드, 인증 방식 | 보안/계정 연계 기준 확인 후 |
-| 외부 시스템 호출 흐름 | OCI, Dataiku, GenON, Anyflow 등 연계 요건 확인 후 |
+| 권한 코드 상세, 감사 정책 | 보안/계정 연계 기준 확인 후 |
+| 외부 시스템별 호출 상세 | OCI, Dataiku, GenON, Anyflow 등 연계 요건 확인 후 |
 | 배치, 큐, DLQ, webhook | 비동기 처리와 실패 재처리 요건 확인 후 |
 | 운영 Swagger/Actuator 노출 | 운영 보안 정책 확인 후 |

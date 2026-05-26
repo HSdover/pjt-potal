@@ -8,6 +8,7 @@ import { PortalTextInput, PortalTextarea } from "@/shared/components/tags";
 import BaseGrid from "@/shared/components/grid/BaseGrid.vue";
 import SearchPanel from "@/shared/components/search/SearchPanel.vue";
 import GridPageLayout from "@/components/GridPageLayout.vue";
+import { handleApiError, isUserCancel } from "@/shared/api/error-handler";
 import type { ListRequest, ListSort } from "@/shared/types/list";
 import { fieldError, maxLengthText, requiredText } from "@/shared/validation/vuelidate";
 import { createSample, deleteSample, fetchList, updateSample } from "../api";
@@ -67,7 +68,7 @@ async function load() {
       selectedRow.value = null;
     }
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "목록 조회에 실패했습니다.");
+    handleApiError(error, "목록 조회에 실패했습니다.");
   } finally {
     loading.value = false;
   }
@@ -153,7 +154,7 @@ async function save() {
     dialogVisible.value = false;
     void load();
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "저장에 실패했습니다.");
+    handleApiError(error, "저장에 실패했습니다.");
   } finally {
     saving.value = false;
   }
@@ -177,10 +178,10 @@ async function remove() {
     ElMessage.success("삭제되었습니다.");
     void load();
   } catch (error) {
-    if (error === "cancel" || error === "close") {
+    if (isUserCancel(error)) {
       return;
     }
-    ElMessage.error(error instanceof Error ? error.message : "삭제에 실패했습니다.");
+    handleApiError(error, "삭제에 실패했습니다.");
   }
 }
 

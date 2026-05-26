@@ -31,7 +31,7 @@ spring:
       ddl-auto: none
     open-in-view: false
   cache:
-    type: ${GOVERNANCE_CACHE_TYPE:simple}
+    type: ${GOVERNANCE_CACHE_TYPE:redis}
     redis:
       time-to-live: ${GOVERNANCE_CACHE_REDIS_TTL:300s}
       cache-null-values: false
@@ -55,11 +55,15 @@ springdoc:
 management:
   health:
     redis:
-      enabled: ${GOVERNANCE_REDIS_HEALTH_ENABLED:false}
+      enabled: ${GOVERNANCE_REDIS_HEALTH_ENABLED:true}
   endpoints:
     web:
       exposure:
         include: health,info,metrics
+
+logging:
+  pattern:
+    level: "%5p [requestId:%X{requestId:-}]"
 
 app:
   auth:
@@ -81,6 +85,10 @@ app:
     sample-maintenance:
       scheduled: ${GOVERNANCE_BATCH_SAMPLE_MAINTENANCE_SCHEDULED:false}
       cron: ${GOVERNANCE_BATCH_SAMPLE_MAINTENANCE_CRON:0 0/30 * * * *}
+  external-api:
+    connect-timeout: ${GOVERNANCE_EXTERNAL_API_CONNECT_TIMEOUT:3s}
+    read-timeout: ${GOVERNANCE_EXTERNAL_API_READ_TIMEOUT:10s}
+    logging-enabled: ${GOVERNANCE_EXTERNAL_API_LOGGING_ENABLED:true}
   frontend-dev-server:
     enabled: ${GOVERNANCE_FRONTEND_DEV_SERVER_ENABLED:false}
     restart: ${GOVERNANCE_FRONTEND_DEV_SERVER_RESTART:false}

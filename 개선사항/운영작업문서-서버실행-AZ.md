@@ -95,7 +95,7 @@ ssh -i /path/to/private_key opc@서버IP
 ## 5. 서버 기본 패키지 설치
 
 ```bash
-sudo dnf install -y java-21-openjdk-headless nginx firewalld chrony logrotate unzip tar rsync curl
+sudo dnf install -y java-21-openjdk-headless nginx firewalld chrony logrotate unzip tar rsync curl nmap-ncat policycoreutils-python-utils
 java -version
 
 sudo systemctl enable --now nginx
@@ -130,7 +130,7 @@ sudo setsebool -P httpd_can_network_connect 1
 진단 도구(차단 원인 분석용, 선택):
 
 ```bash
-sudo dnf install -y policycoreutils policycoreutils-python-utils setroubleshoot-server
+sudo dnf install -y policycoreutils setroubleshoot-server
 # 차단 로그 확인:
 #   sudo ausearch -m avc -ts recent
 #   sudo sealert -a /var/log/audit/audit.log
@@ -142,6 +142,7 @@ sudo dnf install -y policycoreutils policycoreutils-python-utils setroubleshoot-
 sudo useradd -r -m -d /opt/governance-portal -s /sbin/nologin governance || true
 
 sudo mkdir -p /opt/governance-portal/releases
+sudo mkdir -p /opt/governance-portal/releases/archive
 sudo mkdir -p /opt/governance-portal/logs
 sudo mkdir -p /opt/governance-portal/config
 sudo mkdir -p /var/www/governance-portal
@@ -173,6 +174,11 @@ SAML metadata 파일 -> /tmp/idp-metadata.xml   (외부 IdP egress가 막힌 경
 
 ```bash
 sudo mkdir -p /opt/governance-portal/releases/first
+release_id=$(date +%Y%m%d%H%M%S)
+sudo cp /tmp/governance-portal-release.zip "/opt/governance-portal/releases/archive/governance-portal-release-${release_id}.zip"
+sha256sum /tmp/governance-portal-release.zip | sudo tee "/opt/governance-portal/releases/archive/governance-portal-release-${release_id}.sha256" >/dev/null
+sudo chown governance:governance "/opt/governance-portal/releases/archive/governance-portal-release-${release_id}.zip" "/opt/governance-portal/releases/archive/governance-portal-release-${release_id}.sha256"
+sudo chmod 640 "/opt/governance-portal/releases/archive/governance-portal-release-${release_id}.zip" "/opt/governance-portal/releases/archive/governance-portal-release-${release_id}.sha256"
 sudo unzip /tmp/governance-portal-release.zip -d /opt/governance-portal/releases/first
 ```
 
@@ -227,9 +233,10 @@ sudo chmod 600 /etc/pki/governance-portal/privkey.pem
 
 ### 8-2. SELinux 파일 컨텍스트 보정
 
-rsync로 옮긴 정적 파일이 잘못된 SELinux 컨텍스트를 가지면 Nginx가 읽지 못한다(403/404). 표준 컨텍스트로 복원한다.
+rsync로 옮긴 정적 파일이 잘못된 SELinux 컨텍스트를 가지면 Nginx가 읽지 못한다(403/404). `/var/www/governance-portal`을 Nginx 정적 파일 경로로 등록하고 표준 컨텍스트로 복원한다.
 
 ```bash
+sudo semanage fcontext -a -t httpd_sys_content_t '/var/www/governance-portal(/.*)?' || true
 sudo restorecon -Rv /var/www/governance-portal
 ```
 
@@ -259,10 +266,19 @@ GOVERNANCE_DATASOURCE_DRIVER=oracle.jdbc.OracleDriver
 GOVERNANCE_DATASOURCE_USERNAME=appuser
 GOVERNANCE_DATASOURCE_PASSWORD=change-me
 
-# Redis는 사용할 때만 설정한다(미설정 시 캐시는 simple 기본값).
-# GOVERNANCE_CACHE_TYPE=redis
-# GOVERNANCE_REDIS_HOST=127.0.0.1
-# GOVERNANCE_REDIS_PORT=6379
+GOVERNANCE_CACHE_TYPE=redis
+GOVERNANCE_CACHE_REDIS_TTL=300s
+GOVERNANCE_CACHE_REDIS_KEY_PREFIX=governance:
+GOVERNANCE_REDIS_HOST=redis-host
+GOVERNANCE_REDIS_PORT=6379
+GOVERNANCE_REDIS_DATABASE=0
+GOVERNANCE_REDIS_PASSWORD=
+GOVERNANCE_REDIS_TIMEOUT=2s
+GOVERNANCE_REDIS_HEALTH_ENABLED=true
+
+GOVERNANCE_EXTERNAL_API_CONNECT_TIMEOUT=3s
+GOVERNANCE_EXTERNAL_API_READ_TIMEOUT=10s
+GOVERNANCE_EXTERNAL_API_LOGGING_ENABLED=true
 
 SAML_IDP_METADATA_URI=https://idp.example.com/metadata
 SAML_SP_ENTITY_ID=https://portal.example.com/saml2/service-provider-metadata/knox
@@ -292,11 +308,12 @@ SAML_IDP_METADATA_URI=file:/opt/governance-portal/config/idp-metadata.xml
 
 ```bash
 nc -zv db-host 1521        # ADB Wallet 접속이면 tnsnames의 host/port 기준으로 점검
+nc -zv redis-host 6379     # Redis cache 접속 점검
 ```
 
 ## 10. Nginx 설정
 
-SAML을 사용하므로 `/api/`, `/login/`, `/saml2/`, `/actuator/`를 Spring Boot로 프록시해야 한다.
+SAML을 사용하므로 `/api/`, `/login/`, `/saml2/`, `/actuator/`를 Spring Boot로 프록시해야 한다. Swagger/API 문서를 운영망에서 열어야 하면 `infra/nginx/governance-portal.conf` 템플릿처럼 `/api-docs/`, `/api-docs`, `/swagger-ui/`, `/swagger-ui.html`도 같이 프록시한다.
 
 ```bash
 sudo vi /etc/nginx/conf.d/governance-portal.conf
@@ -305,6 +322,16 @@ sudo vi /etc/nginx/conf.d/governance-portal.conf
 기본 예시:
 
 ```nginx
+map $http_x_request_id $governance_request_id {
+    default $http_x_request_id;
+    ""      $request_id;
+}
+
+log_format governance_portal
+    '$remote_addr - $remote_user [$time_local] "$request" '
+    '$status $body_bytes_sent "$http_referer" "$http_user_agent" '
+    'request_id=$governance_request_id upstream_status=$upstream_status';
+
 upstream governance_portal_backend {
     server 127.0.0.1:18080;
 }
@@ -315,6 +342,8 @@ server {
 
     root /var/www/governance-portal;
     index index.html;
+    access_log /var/log/nginx/governance-portal.access.log governance_portal;
+    error_log  /var/log/nginx/governance-portal.error.log;
 
     location /assets/ {
         try_files $uri =404;
@@ -329,6 +358,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Request-Id $governance_request_id;
     }
 
     location /login/ {
@@ -338,6 +368,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Request-Id $governance_request_id;
     }
 
     location /saml2/ {
@@ -347,6 +378,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Request-Id $governance_request_id;
     }
 
     location /actuator/ {
@@ -356,6 +388,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Request-Id $governance_request_id;
     }
 
     location / {
@@ -391,11 +424,22 @@ proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 proxy_set_header X-Forwarded-Proto $scheme;
 proxy_set_header X-Forwarded-Host $host;
 proxy_set_header X-Forwarded-Port $server_port;
+proxy_set_header X-Request-Id $governance_request_id;
 ```
 
 그다음 `/etc/nginx/conf.d/governance-portal.conf`를 아래로 교체한다. 80은 443으로 리다이렉트하고, 정적 서빙과 프록시는 443 server에 둔다. `server_name`은 실제 운영 도메인으로 바꾼다.
 
 ```nginx
+map $http_x_request_id $governance_request_id {
+    default $http_x_request_id;
+    ""      $request_id;
+}
+
+log_format governance_portal
+    '$remote_addr - $remote_user [$time_local] "$request" '
+    '$status $body_bytes_sent "$http_referer" "$http_user_agent" '
+    'request_id=$governance_request_id upstream_status=$upstream_status';
+
 upstream governance_portal_backend {
     server 127.0.0.1:18080;
 }
@@ -419,6 +463,8 @@ server {
 
     root /var/www/governance-portal;
     index index.html;
+    access_log /var/log/nginx/governance-portal.access.log governance_portal;
+    error_log  /var/log/nginx/governance-portal.error.log;
 
     location /assets/ {
         try_files $uri =404;
@@ -528,7 +574,7 @@ https://포털도메인/saml2/authenticate/knox
 
 ### 12-1. 보안 임시파일 정리 (필수)
 
-동작 확인이 끝나면 `/tmp`에 남은 보안 원본을 삭제한다. (운영에서 실제로 참조하는 파일은 이미 `/opt`·`/etc/pki`로 옮겨졌다)
+동작 확인이 끝나면 `/tmp`에 남은 보안 원본을 삭제한다. 운영에서 실제로 참조하는 파일은 이미 `/opt`·`/etc/pki`로 옮겨졌고, 배포 zip은 8장에서 `/opt/governance-portal/releases/archive/`에 체크섬과 함께 보관했다.
 
 ```bash
 sudo rm -f /tmp/governance-portal-release.zip
@@ -542,9 +588,11 @@ sudo rm -f /tmp/idp-metadata.xml
 
 ```bash
 journalctl -u governance-portal -f
-tail -f /var/log/nginx/error.log
-tail -f /var/log/nginx/access.log
+tail -f /var/log/nginx/governance-portal.error.log
+tail -f /var/log/nginx/governance-portal.access.log
 ```
+
+10장에서 제공한 Nginx 설정을 적용하면 `/var/log/nginx/governance-portal.access.log`에 `request_id=...`가 남는다. 백엔드 로그의 `requestId`와 같은 값이므로 화면 오류의 요청ID로 Nginx와 Spring Boot 로그를 함께 조회한다.
 
 journald 보존 용량을 제한하려면 `/etc/systemd/journald.conf`에서 `SystemMaxUse`를 설정한다(예: `SystemMaxUse=500M`) 후 `sudo systemctl restart systemd-journald`.
 

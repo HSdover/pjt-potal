@@ -23,6 +23,18 @@ type HttpBodyOptions = {
   headers?: HeadersInit;
 };
 
+type ErrorBody = {
+  message?: unknown;
+  detail?: unknown;
+  title?: unknown;
+  code?: unknown;
+  fieldErrors?: unknown;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 function readCookie(name: string) {
   return document.cookie
     .split("; ")
@@ -65,23 +77,66 @@ function appendParams(url: URL, params?: HttpParams) {
   });
 }
 
-async function parseResponse<T>(response: Response): Promise<T> {
+async function readResponseBody(response: Response) {
+  if (response.status === 204) {
+    return undefined;
+  }
+
   const contentType = response.headers.get("content-type") ?? "";
-  const isJson = contentType.includes("application/json");
-  const body = isJson ? await response.json() : await response.text();
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  const text = await response.text();
+  return text === "" ? undefined : text;
+}
+
+function errorMessage(body: ErrorBody | string | undefined) {
+  if (typeof body === "string") {
+    return body || "API request failed.";
+  }
+
+  if (!body) {
+    return "API request failed.";
+  }
+
+  const candidate = body.message ?? body.detail ?? body.title;
+  return typeof candidate === "string" && candidate.trim() ? candidate : "API request failed.";
+}
+
+function errorCode(body: ErrorBody | string | undefined) {
+  return isRecord(body) && typeof body.code === "string" ? body.code : undefined;
+}
+
+function fieldErrors(body: ErrorBody | string | undefined) {
+  if (!isRecord(body) || !Array.isArray(body.fieldErrors)) {
+    return [];
+  }
+
+  return body.fieldErrors
+    .filter(isRecord)
+    .map((fieldError) => ({
+      field: typeof fieldError.field === "string" ? fieldError.field : "",
+      message: typeof fieldError.message === "string" ? fieldError.message : "",
+    }))
+    .filter((fieldError) => fieldError.field || fieldError.message);
+}
+
+async function parseResponse<T>(response: Response): Promise<T> {
+  const body = await readResponseBody(response);
 
   if (!response.ok) {
     if (response.status === 401) {
       redirectToLogin();
     }
 
-    const message =
-      typeof body === "object" && body && "message" in body
-        ? String(body.message)
-        : "API request failed.";
+    const requestId = response.headers.get("X-Request-Id") ?? (isRecord(body) && typeof body.requestId === "string" ? body.requestId : undefined);
 
-    throw new ApiError(message, {
+    throw new ApiError(errorMessage(body), {
       status: response.status,
+      code: errorCode(body),
+      requestId,
+      fieldErrors: fieldErrors(body),
       details: body,
     });
   }

@@ -1,5 +1,6 @@
 package com.example.governanceportal.reference.form.service;
 
+import com.example.governanceportal.common.error.BusinessException;
 import com.example.governanceportal.reference.form.dto.RefFormItem;
 import com.example.governanceportal.reference.form.dto.RefFormSaveRequest;
 import java.time.LocalDate;
@@ -26,7 +27,7 @@ public class RefFormService {
         return items.stream()
             .filter(item -> item.id().equals(id))
             .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("Reference form not found: " + id));
+            .orElseThrow(() -> BusinessException.notFound("Reference form not found: " + id));
     }
 
     public RefFormItem create(RefFormSaveRequest request) {

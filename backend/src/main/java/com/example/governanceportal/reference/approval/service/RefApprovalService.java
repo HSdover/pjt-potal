@@ -1,5 +1,6 @@
 package com.example.governanceportal.reference.approval.service;
 
+import com.example.governanceportal.common.error.BusinessException;
 import com.example.governanceportal.reference.approval.dto.RefApprovalDecisionRequest;
 import com.example.governanceportal.reference.approval.dto.RefApprovalHistoryItem;
 import com.example.governanceportal.reference.approval.dto.RefApprovalItem;
@@ -53,7 +54,7 @@ public class RefApprovalService {
     public RefApprovalItem findById(Long id) {
         RefApprovalItem item = store.get(id);
         if (item == null) {
-            throw new IllegalArgumentException("Reference approval not found: " + id);
+            throw BusinessException.notFound("Reference approval not found: " + id);
         }
         return item;
     }

@@ -12,6 +12,7 @@ Client
   -> Nginx
      - Vue 정적 파일 서빙
      - /api/* 요청을 Spring Boot로 reverse proxy
+     - /login/*, /saml2/* 요청을 SAML 로그인 흐름용으로 Spring Boot에 reverse proxy
      - /api-docs/*, /swagger-ui*, /actuator/* 요청을 Spring Boot로 reverse proxy
   -> Spring Boot executable JAR
      - embedded Tomcat
@@ -49,7 +50,9 @@ infra/nginx/governance-portal.conf
 
 - `/assets/*`는 장기 캐시를 적용합니다.
 - `/api/*`는 `http://127.0.0.1:18080`으로 proxy합니다.
+- SAML 사용 시 `/login/*`, `/saml2/*`도 Spring Boot로 proxy합니다.
 - `/api-docs/*`, `/swagger-ui*`, `/actuator/*`도 Spring Boot로 proxy합니다.
+- Nginx는 `X-Request-Id`를 백엔드로 전달하고 access log에도 남깁니다.
 - 그 외 프론트 라우트는 `try_files $uri $uri/ /index.html`로 처리합니다.
 
 5. Spring Boot 실행
@@ -60,11 +63,19 @@ infra/nginx/governance-portal.conf
 infra/systemd/governance-portal.service
 ```
 
+운영 env 템플릿:
+
+```text
+infra/env/governance-portal.env.template
+```
+
 수동 실행 예:
 
 ```bash
 SERVER_PORT=18080 java -jar /opt/governance-portal/governance-portal-backend.jar
 ```
+
+운영 실행은 `infra/systemd/governance-portal.service`처럼 `/opt/governance-portal/config/governance-portal.env`를 `EnvironmentFile`로 분리해 DB, SAML, 포트 값을 주입합니다.
 
 6. 포트 정책
 
@@ -113,4 +124,7 @@ curl -X POST http://localhost/api/samples/search \
 - Vue 정적 파일은 Spring Boot JAR에 포함하지 않습니다.
 - Vue 새로고침 처리는 Nginx `try_files`가 담당합니다.
 - Spring Boot에는 `server.forward-headers-strategy=framework`를 설정해 reverse proxy 헤더를 인식하게 합니다.
+- SAML 운영에서는 Nginx가 `X-Forwarded-Proto`, `X-Forwarded-Host`, `X-Forwarded-Port`를 전달해야 ACS/metadata URL이 운영 도메인 기준으로 생성됩니다.
+- 운영 장애 추적을 위해 Nginx access log의 request_id와 Spring Boot 로그의 `requestId`를 같은 값으로 맞춥니다.
 - 운영 DB를 사용할 경우 `GOVERNANCE_DATASOURCE_URL`, `GOVERNANCE_DATASOURCE_USERNAME`, `GOVERNANCE_DATASOURCE_PASSWORD`를 반드시 외부 환경 변수로 주입합니다.
+- 운영 캐시는 Redis가 기본이며, Redis 없이 로컬 개발할 때는 `local` profile의 `simple` cache를 사용합니다.

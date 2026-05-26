@@ -9,11 +9,13 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 @Service
 public class RefDashboardService {
 
+    @Cacheable(cacheNames = "referenceDashboard", key = "'main'")
     public RefDashboardData getMain() {
         List<Kpi> kpis = List.of(
             new Kpi("일일 처리 건수", 1248, "건", "+4.2%"),

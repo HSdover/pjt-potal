@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { ElCard, ElDescriptions, ElDescriptionsItem, ElMessage } from "element-plus";
+import { ElCard, ElDescriptions, ElDescriptionsItem } from "element-plus";
 import AuthButton from "@/shared/components/auth/AuthButton.vue";
 import { PortalTag } from "@/shared/components/tags";
+import { handleApiError } from "@/shared/api/error-handler";
 import { fetchDetail, fetchDetailList } from "../api";
 import type { RefDetailItem } from "../types";
 
@@ -22,7 +23,7 @@ async function loadList() {
       await selectItem(items.value[0].id);
     }
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "참고 상세 목록 조회에 실패했습니다.");
+    handleApiError(error, "참고 상세 목록 조회에 실패했습니다.");
   } finally {
     loading.value = false;
   }
@@ -33,7 +34,7 @@ async function selectItem(id: number) {
   try {
     selected.value = await fetchDetail(id);
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "참고 상세 조회에 실패했습니다.");
+    handleApiError(error, "참고 상세 조회에 실패했습니다.");
   }
 }
 

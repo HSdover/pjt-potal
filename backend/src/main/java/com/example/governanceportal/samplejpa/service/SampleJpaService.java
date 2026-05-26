@@ -1,5 +1,6 @@
 package com.example.governanceportal.samplejpa.service;
 
+import com.example.governanceportal.common.error.BusinessException;
 import com.example.governanceportal.common.list.ListResponse;
 import com.example.governanceportal.common.list.ListSortRequest;
 import com.example.governanceportal.common.list.PageSupport;
@@ -14,11 +15,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class SampleJpaService {
@@ -52,7 +51,7 @@ public class SampleJpaService {
     @Transactional
     public SampleJpaItem update(Long id, SampleJpaUpdateRequest request) {
         SampleJpa sample = sampleJpaRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sample JPA row was not found."));
+            .orElseThrow(() -> BusinessException.notFound("Sample JPA row was not found."));
 
         sample.update(normalizeRequiredName(request.name()), normalizeText(request.description()));
         return SampleJpaItem.from(sampleJpaRepository.saveAndFlush(sample));
@@ -61,7 +60,7 @@ public class SampleJpaService {
     @Transactional
     public void delete(Long id) {
         if (!sampleJpaRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Sample JPA row was not found.");
+            throw BusinessException.notFound("Sample JPA row was not found.");
         }
 
         sampleJpaRepository.deleteById(id);
@@ -106,7 +105,7 @@ public class SampleJpaService {
 
     private String normalizeRequiredName(String value) {
         if (!StringUtils.hasText(value)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Sample JPA name is required.");
+            throw BusinessException.badRequest("Sample JPA name is required.");
         }
 
         return value.trim();

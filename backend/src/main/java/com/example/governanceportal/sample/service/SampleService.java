@@ -1,5 +1,6 @@
 package com.example.governanceportal.sample.service;
 
+import com.example.governanceportal.common.error.BusinessException;
 import com.example.governanceportal.common.list.ListResponse;
 import com.example.governanceportal.common.list.PageSupport;
 import com.example.governanceportal.sample.dto.SampleCreateRequest;
@@ -8,10 +9,8 @@ import com.example.governanceportal.sample.dto.SampleListRequest;
 import com.example.governanceportal.sample.dto.SampleUpdateRequest;
 import com.example.governanceportal.sample.repository.SampleRepository;
 import java.util.List;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class SampleService {
@@ -39,7 +38,7 @@ public class SampleService {
         Long id = sampleRepository.create(name, description);
 
         return sampleRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Created sample was not found."));
+            .orElseThrow(() -> BusinessException.internal("Created sample was not found."));
     }
 
     public SampleItem update(Long id, SampleUpdateRequest request) {
@@ -48,23 +47,23 @@ public class SampleService {
 
         boolean updated = sampleRepository.update(id, name, description);
         if (!updated) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Sample was not found.");
+            throw BusinessException.notFound("Sample was not found.");
         }
 
         return sampleRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sample was not found."));
+            .orElseThrow(() -> BusinessException.notFound("Sample was not found."));
     }
 
     public void delete(Long id) {
         boolean deleted = sampleRepository.delete(id);
         if (!deleted) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Sample was not found.");
+            throw BusinessException.notFound("Sample was not found.");
         }
     }
 
     private String normalizeRequiredName(String value) {
         if (!StringUtils.hasText(value)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Sample name is required.");
+            throw BusinessException.badRequest("Sample name is required.");
         }
 
         return value.trim();

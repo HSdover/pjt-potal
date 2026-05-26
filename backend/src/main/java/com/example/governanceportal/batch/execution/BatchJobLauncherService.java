@@ -1,5 +1,6 @@
 package com.example.governanceportal.batch.execution;
 
+import com.example.governanceportal.common.error.BusinessException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +49,7 @@ public class BatchJobLauncherService {
     public BatchJobExecutionResponse getExecution(long executionId) {
         JobExecution execution = jobExplorer.getJobExecution(executionId);
         if (execution == null) {
-            throw new IllegalArgumentException("Batch execution not found: " + executionId);
+            throw BusinessException.notFound("Batch execution not found: " + executionId);
         }
 
         return toResponse(execution);
@@ -57,7 +58,7 @@ public class BatchJobLauncherService {
     private Job findJob(String jobName) {
         Job job = jobsByName.get(jobName);
         if (job == null) {
-            throw new IllegalArgumentException("Batch job not found: " + jobName);
+            throw BusinessException.notFound("Batch job not found: " + jobName);
         }
         return job;
     }

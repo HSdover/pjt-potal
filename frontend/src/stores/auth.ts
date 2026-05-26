@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { fetchCurrentUser } from "@/shared/api/session";
+import { logClientError } from "@/shared/api/error-handler";
 
 type AuthSession = {
   userName: string;
@@ -45,7 +46,7 @@ export const useAuthStore = defineStore("auth", {
           permissions: user.permissions,
         });
       } catch (error) {
-        console.warn("Failed to load current session.", error);
+        logClientError(error, "Failed to load current session.");
         this.clearSession();
       } finally {
         this.sessionLoaded = true;

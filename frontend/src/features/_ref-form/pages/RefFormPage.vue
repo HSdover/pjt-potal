@@ -4,6 +4,7 @@ import useVuelidate from "@vuelidate/core";
 import { ElCard, ElForm, ElFormItem, ElMessage } from "element-plus";
 import AuthButton from "@/shared/components/auth/AuthButton.vue";
 import { PortalDateInput, PortalSelect, PortalTextInput, PortalTextarea } from "@/shared/components/tags";
+import { handleApiError } from "@/shared/api/error-handler";
 import { fieldError, maxLengthText, requiredText } from "@/shared/validation/vuelidate";
 import { createForm, fetchFormList, updateForm } from "../api";
 import type { RefFormItem, RefFormSaveRequest } from "../types";
@@ -78,7 +79,7 @@ async function loadList() {
   try {
     items.value = await fetchFormList();
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "참고 폼 목록 조회에 실패했습니다.");
+    handleApiError(error, "참고 폼 목록 조회에 실패했습니다.");
   } finally {
     loading.value = false;
   }
@@ -112,7 +113,7 @@ async function save() {
     resetForm();
     await loadList();
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "저장에 실패했습니다.");
+    handleApiError(error, "저장에 실패했습니다.");
   } finally {
     saving.value = false;
   }

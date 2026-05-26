@@ -10,6 +10,7 @@ import {
 } from "element-plus";
 import AuthButton from "@/shared/components/auth/AuthButton.vue";
 import { PortalTag, PortalTextarea } from "@/shared/components/tags";
+import { handleApiError } from "@/shared/api/error-handler";
 import { approve, fetchApproval, fetchApprovalList, reject } from "../api";
 import type { RefApprovalItem } from "../types";
 
@@ -50,7 +51,7 @@ async function loadList() {
       await select(items.value[0].id);
     }
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "결재 목록 조회에 실패했습니다.");
+    handleApiError(error, "결재 목록 조회에 실패했습니다.");
   } finally {
     loading.value = false;
   }
@@ -61,7 +62,7 @@ async function select(id: number) {
     selected.value = await fetchApproval(id);
     comment.value = "";
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "결재 상세 조회에 실패했습니다.");
+    handleApiError(error, "결재 상세 조회에 실패했습니다.");
   }
 }
 
@@ -76,7 +77,7 @@ async function doApprove() {
     comment.value = "";
     await loadList();
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "승인 처리에 실패했습니다.");
+    handleApiError(error, "승인 처리에 실패했습니다.");
   } finally {
     acting.value = false;
   }
@@ -97,7 +98,7 @@ async function doReject() {
     comment.value = "";
     await loadList();
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "반려 처리에 실패했습니다.");
+    handleApiError(error, "반려 처리에 실패했습니다.");
   } finally {
     acting.value = false;
   }

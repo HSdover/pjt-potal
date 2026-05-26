@@ -1,0 +1,224 @@
+Governance Portal - 예외 처리 및 로깅 전략
+
+작성일: 2026-05-22
+최종수정: 2026-05-26
+
+=======================================================================
+1. 현재 확정된 기준
+=======================================================================
+
+현재 프로젝트는 백엔드 전역 예외 처리, requestId 추적, AOP 기반 실행 로그,
+프론트 공통 에러 처리, 외부 REST API 요약 로깅까지 공통 인프라를 반영한 상태다.
+
+장애 대응 시에는 화면에 표시되는 요청ID 또는 응답 헤더 `X-Request-Id`를 기준으로
+Spring Boot 로그와 외부 API 호출 로그를 함께 추적한다.
+
+=======================================================================
+2. 백엔드 예외 처리
+=======================================================================
+
+공통 처리 위치:
+
+- `common.error.GlobalExceptionHandler`
+- `common.error.BusinessException`
+- `common.error.ErrorCode`
+- `common.error.ApiErrorResponse`
+- `common.error.ApiFieldError`
+
+API 오류 응답은 아래 필드로 통일한다.
+
+- `timestamp`
+- `status`
+- `code`
+- `message`
+- `path`
+- `requestId`
+- `fieldErrors`
+
+공통 처리 대상:
+
+- `BusinessException`
+- `MethodArgumentNotValidException`
+- `ConstraintViolationException`
+- `HttpMessageNotReadableException`
+- `AccessDeniedException`
+- `DataAccessException`
+- `ResponseStatusException`
+- `ExternalApiException`
+- 기타 미처리 예외
+
+기존 화면/서비스의 개별 예외 처리는 `BusinessException` 중심으로 정리했다.
+예를 들어 sample, sample-jpa, reference, batch 실행 서비스의 not found/bad request
+케이스는 공통 예외 응답으로 반환된다.
+
+권장 규칙:
+
+- 업무적으로 예상 가능한 오류는 `BusinessException`을 사용한다.
+- 컨트롤러마다 `@ExceptionHandler`를 만들지 않는다.
+- 클라이언트에는 stack trace를 반환하지 않는다.
+- 서버 로그에는 requestId, path, error code를 남긴다.
+
+=======================================================================
+3. requestId 추적
+=======================================================================
+
+공통 처리 위치:
+
+- `common.error.RequestIdFilter`
+- `application.yml` logging pattern
+
+동작 방식:
+
+- 요청 헤더 `X-Request-Id`가 있으면 해당 값을 사용한다.
+- 없으면 서버에서 UUID를 생성한다.
+- requestId는 MDC `requestId`에 저장된다.
+- 응답 헤더 `X-Request-Id`로 같은 값을 반환한다.
+- 로그 패턴은 `requestId:%X{requestId:-}`를 포함한다.
+
+운영 Nginx는 가능하면 `X-Request-Id`를 백엔드로 전달하고 access log에도 남긴다.
+이렇게 해야 Nginx access log, Spring Boot 로그, 외부 API 로그를 같은 값으로 묶어 볼 수 있다.
+
+=======================================================================
+4. AOP 기반 로깅
+=======================================================================
+
+공통 처리 위치:
+
+- `common.logging.ApplicationLoggingAspect`
+- `spring-boot-starter-aop`
+
+로깅 대상:
+
+- Controller 실행 시간
+- Service 실행 시간
+- API method/path/handler
+- 실패 시 exception class와 elapsedMs
+
+로그 레벨 기준:
+
+- 정상 API 처리: `info`
+- 예상 가능한 업무 예외: `debug`
+- 예상하지 못한 Controller/Service 실패: `warn`
+
+금지:
+
+- request body 전체 로그
+- response body 전체 로그
+- SAMLResponse 원문
+- Authorization/Cookie/token/password
+- 개인정보/계좌/고객식별자 원문
+- TLS private key, Oracle Wallet, 인증서 민감정보
+
+=======================================================================
+5. 프론트엔드 예외 처리
+=======================================================================
+
+공통 처리 위치:
+
+- `shared/api/http.ts`
+- `shared/api/api-error.ts`
+- `shared/api/error-handler.ts`
+- `main.ts`
+
+동작 방식:
+
+- `http.ts`는 백엔드 표준 오류 응답을 `ApiError`로 변환한다.
+- `ApiError`는 `status`, `code`, `requestId`, `fieldErrors`, `details`를 가진다.
+- 401 응답은 공통 API 클라이언트가 SAML 로그인 진입점으로 이동시킨다.
+- 화면에서는 `ElMessage.error(...)`를 직접 반복하지 않고 `handleApiError(error, fallbackMessage)`를 사용한다.
+- `main.ts`는 Vue 전역 error handler, router error handler, `unhandledrejection` handler를 등록한다.
+
+사용자 표시 기준:
+
+- 서버 메시지가 있으면 서버 메시지를 우선한다.
+- requestId가 있으면 오류 메시지에 요청ID를 포함한다.
+- 401은 리다이렉트가 우선이므로 불필요한 토스트를 띄우지 않는다.
+- 사용자가 취소한 confirm/dialog 오류는 에러 토스트 대상에서 제외한다.
+
+적용된 화면:
+
+- 대시보드
+- 샘플 목록
+- JPA 샘플 목록
+- 참고 대시보드
+- 참고 상세 조회
+- 참고 신청/등록 폼
+- 참고 승인 워크플로우
+
+=======================================================================
+6. 외부 REST API 호출 로깅
+=======================================================================
+
+공통 처리 위치:
+
+- `config.ApiClientConfig`
+- `common.external.ExternalApiClientFactory`
+- `common.external.ExternalApiLoggingInterceptor`
+- `common.external.ExternalApiException`
+- `common.external.ExternalApiHeaders`
+- `common.external.ExternalApiProperties`
+- `common.external.ExternalApiLogSanitizer`
+
+현재 기준:
+
+- 기본 호출 방식은 `RestClient + HTTP Interface`다.
+- 공통 `RestClient`에 connect/read timeout을 적용한다.
+- 외부 호출 시 내부 requestId를 `X-Request-Id`로 전파한다.
+- 외부 API 4xx/5xx와 통신 실패는 `ExternalApiException`으로 변환한다.
+- `ExternalApiException`은 공통 예외 응답에서 `EXTERNAL_API_ERROR`, HTTP 502로 반환된다.
+- 외부 시스템 식별은 내부 마커 헤더 `X-External-System`을 사용하고, 실제 송신 전 제거한다.
+
+외부 API 로그 항목:
+
+- externalSystem
+- api
+- status
+- elapsedMs
+- reason
+- requestId
+
+request/response body 전체는 로그에 남기지 않는다.
+세부 연계 전략은 `외부RESTAPI-연계전략.md`를 기준으로 한다.
+
+=======================================================================
+7. 운영 보강 후보
+=======================================================================
+
+현재 상태로 공통 예외/로깅 기준은 확정 가능하다. 다만 운영 요건이 확정되면 아래 항목은 추가 검토한다.
+
+1. 로그 보관 정책
+   - journald 보관 용량
+   - Nginx access/error logrotate
+   - 애플리케이션 파일 로그 필요 여부
+
+2. 장애 알림
+   - 내부망에서 사용할 수 있는 에러 수집/알림 도구
+   - Sentry를 쓸 경우 SaaS가 가능한지, 아니면 self-hosted가 필요한지
+   - 도입 전 보안/망분리/비용 정책 확인
+
+3. 외부 REST API 상세 정책
+   - 시스템별 timeout
+   - 조회성 API retry 허용 여부
+   - circuit breaker 필요 여부
+   - 장애 알림 기준
+
+4. 감사 로그
+   - 승인/반려/권한 변경/배치 실행처럼 감사 대상이 되는 업무 이벤트
+   - 누가, 언제, 무엇을, 어떤 결과로 수행했는지 별도 audit log 또는 DB 적재 여부
+
+5. 개인정보 마스킹
+   - 실제 업무 데이터 항목 확정 후 고객식별자, 계좌번호, 사번 등 마스킹 규칙 확정
+
+=======================================================================
+8. 결론
+=======================================================================
+
+예외 처리와 로깅은 현재 프로젝트 공통 규칙으로 반영되어 있다.
+
+앞으로 신규 API나 화면을 만들 때는 아래 원칙을 따른다.
+
+- 백엔드 업무 오류는 `BusinessException`으로 표현한다.
+- 화면에서는 `handleApiError`를 사용한다.
+- 로그에는 requestId와 요약 정보만 남긴다.
+- 외부 API는 공통 `RestClient` 또는 `ExternalApiClientFactory`를 통해 호출한다.
+- 민감정보와 body 전체 로그는 남기지 않는다.

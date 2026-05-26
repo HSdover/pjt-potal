@@ -38,6 +38,9 @@ OCI Oracle Cloud
 | firewalld | Oracle Linux 내부 방화벽 | 서버 OS 내부 포트 허용 제어 |
 | Nginx | 웹 서버/reverse proxy | 정적 프론트 서빙, API/SAML 요청 프록시 |
 | Spring Boot | 백엔드 애플리케이션 | API, SAML ACS, 세션, 권한 처리 |
+| Redis | 캐시 저장소 | 운영 캐시, 조회성 샘플 API 캐시 |
+| Oracle DB/ADB | 운영 DB | 업무 데이터, Spring Batch 메타테이블 저장 |
+| 외부 REST API | OCI/외부 모듈 연계 | 포털 백엔드가 BFF로 호출 |
 | systemd | Linux 서비스 관리자 | Spring Boot JAR 실행/재시작/상태관리 |
 
 ## 네트워크 구조
@@ -74,9 +77,15 @@ Oracle Linux VM
         |-- /saml2/authenticate/knox
         |-- /login/saml2/sso/knox
         |-- /actuator/health
+        |
+        |-- Oracle DB/ADB
+        |-- Redis cache
+        |-- OCI/외부 모듈 REST API
 ```
 
 중요한 기준은 Spring Boot 포트 `18080`을 외부에 직접 열지 않는 것이다. 외부 사용자는 Nginx의 `80/443`으로만 접근하고, Nginx가 내부의 Spring Boot로 요청을 넘긴다.
+
+Nginx는 `X-Request-Id`를 백엔드에 전달하고, 백엔드는 같은 값을 MDC와 응답 헤더에 남긴다. 장애 대응 시에는 이 requestId로 Nginx access log, Spring Boot 로그, 외부 REST API 로그를 함께 조회한다.
 
 ## 포트 기준
 
@@ -163,6 +172,47 @@ Oracle Wallet, 필요 시
 Oracle DB를 사용할 경우 백엔드 JAR에는 `ojdbc11` JDBC 드라이버가 포함되어야 한다. 현재 프로젝트는 Oracle DB 전환을 고려해 `com.oracle.database.jdbc:ojdbc11` 런타임 의존성을 사용한다. 운영 env에는 `GOVERNANCE_DATASOURCE_URL`, `GOVERNANCE_DATASOURCE_DRIVER=oracle.jdbc.OracleDriver`, DB 계정/비밀번호를 주입한다.
 
 Oracle Autonomous Database처럼 Wallet 기반 접속을 사용할 때는 Wallet 파일과 Oracle security companion JAR 필요 여부를 DBA/OCI 담당자와 별도로 확인한다.
+
+Spring Batch를 Oracle DB에서 사용할 경우 `BATCH_*` 메타테이블이 필요하다. 운영에서는 DBA가 Spring Batch 공식 Oracle schema로 선생성하고 `GOVERNANCE_BATCH_SCHEMA_INITIALIZE=never`를 유지하는 방식을 우선한다. 최초 1회 자동 생성이 필요한 경우에만 임시로 `always`를 쓰고, 생성 후 반드시 `never`로 되돌린다.
+
+Redis cache를 사용할 경우 운영 env에는 아래 값이 필요하다.
+
+```text
+GOVERNANCE_CACHE_TYPE=redis
+GOVERNANCE_REDIS_HOST=redis-host
+GOVERNANCE_REDIS_PORT=6379
+GOVERNANCE_REDIS_DATABASE=0
+GOVERNANCE_REDIS_PASSWORD=
+GOVERNANCE_REDIS_HEALTH_ENABLED=true
+```
+
+로컬 개발(`local` profile)은 Redis 없이도 실행되도록 기본 캐시가 `simple`이다. 운영(`saml,adb`)은 Redis 접속이 실패하면 health check 또는 캐시 사용 구간에서 문제가 드러날 수 있으므로, 서비스 기동 전에 `nc -zv redis-host 6379`로 도달성을 확인한다.
+
+## 외부 REST API 연계 구조
+
+이 프로젝트는 OCI와 외부 모듈 데이터를 REST API로 받아올 가능성이 높다. 운영 구조에서는 브라우저가 외부 시스템을 직접 호출하지 않고 Spring Boot가 BFF 역할로 호출한다.
+
+```text
+Frontend
+-> Spring Boot Backend
+-> OCI / 외부 모듈 REST API
+```
+
+현재 백엔드에는 공통 `RestClient + HTTP Interface` 기반 외부 API 호출 구조가 들어가 있다.
+
+- `ExternalApiClientFactory`: 선언형 HTTP client 생성
+- `ExternalApiLoggingInterceptor`: 외부 호출 요약 로그, requestId 전파
+- `ExternalApiException`: 외부 API 실패를 공통 오류 응답으로 변환
+
+운영 env에서 기본 timeout과 로깅 여부를 설정한다.
+
+```text
+GOVERNANCE_EXTERNAL_API_CONNECT_TIMEOUT=3s
+GOVERNANCE_EXTERNAL_API_READ_TIMEOUT=10s
+GOVERNANCE_EXTERNAL_API_LOGGING_ENABLED=true
+```
+
+외부 API 로그는 externalSystem, api, status, elapsedMs, reason, requestId만 남기고 request/response body 전체는 남기지 않는다.
 
 ## 개발 DB 전환 방식
 

@@ -42,4 +42,5 @@ export type ListResponse<TRow> = {
 - 조회 버튼은 `pageNo`를 1로 되돌린 뒤 호출한다.
 - 페이지, 페이지 크기, 정렬 변경은 서버 API를 다시 호출한다.
 - `totalCount`, `pageNo`, `pageSize`는 서버 응답을 기준으로 보정한다.
-- API 실패는 화면에서 `ElMessage.error()`로 사용자에게 표시한다.
+- API 실패는 화면에서 `handleApiError(error, fallbackMessage)`로 처리한다.
+- 백엔드 표준 오류 응답은 `shared/api/http.ts`에서 `ApiError`로 변환되며, `requestId`가 있으면 사용자 메시지에 요청ID가 포함된다.

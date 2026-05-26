@@ -21,8 +21,3 @@ spring:
   h2:
     console:
       enabled: false
-
-management:
-  health:
-    redis:
-      enabled: ${GOVERNANCE_REDIS_HEALTH_ENABLED:false}

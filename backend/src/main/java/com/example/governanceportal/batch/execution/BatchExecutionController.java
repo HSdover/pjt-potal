@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,10 +38,5 @@ public class BatchExecutionController {
     @GetMapping("/executions/{executionId}")
     public ResponseEntity<BatchJobExecutionResponse> getExecution(@PathVariable long executionId) {
         return ResponseEntity.ok(batchJobLauncherService.getExecution(executionId));
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException error) {
-        return ResponseEntity.badRequest().body(Map.of("message", error.getMessage()));
     }
 }

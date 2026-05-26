@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { ElMessage } from "element-plus";
 import { PortalTag } from "@/shared/components/tags";
+import { handleApiError } from "@/shared/api/error-handler";
 import {
   fetchDashboardData,
   formatNumber,
@@ -60,7 +60,7 @@ onMounted(async () => {
     data.value = await fetchDashboardData();
   } catch (error) {
     loadFailed.value = true;
-    ElMessage.error(error instanceof Error ? error.message : "대시보드 데이터 조회에 실패했습니다.");
+    handleApiError(error, "대시보드 데이터 조회에 실패했습니다.");
   } finally {
     loading.value = false;
   }

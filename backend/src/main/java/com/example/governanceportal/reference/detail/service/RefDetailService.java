@@ -1,8 +1,10 @@
 package com.example.governanceportal.reference.detail.service;
 
+import com.example.governanceportal.common.error.BusinessException;
 import com.example.governanceportal.reference.detail.dto.RefDetailItem;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -15,14 +17,16 @@ public class RefDetailService {
         new RefDetailItem(4L, "지점 마스터", "MD-004", "조직", "운영지원팀", "지점 코드 및 관할 정보", "ACTIVE", LocalDateTime.of(2026, 3, 1, 11, 0))
     );
 
+    @Cacheable(cacheNames = "referenceDetails", key = "'all'")
     public List<RefDetailItem> findAll() {
         return ITEMS;
     }
 
+    @Cacheable(cacheNames = "referenceDetail", key = "#id")
     public RefDetailItem findById(Long id) {
         return ITEMS.stream()
             .filter(item -> item.id().equals(id))
             .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("Reference detail not found: " + id));
+            .orElseThrow(() -> BusinessException.notFound("Reference detail not found: " + id));
     }
 }

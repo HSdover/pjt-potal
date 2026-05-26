@@ -1,3 +1,12 @@
+spring:
+  cache:
+    type: ${GOVERNANCE_CACHE_TYPE:simple}
+
+management:
+  health:
+    redis:
+      enabled: ${GOVERNANCE_REDIS_HEALTH_ENABLED:false}
+
 app:
   auth:
     local-dev-user:
