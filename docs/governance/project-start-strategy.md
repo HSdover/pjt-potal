@@ -24,7 +24,7 @@
 | 리뷰 기준 | Merge Request 승인자, 리뷰 필수 여부, 보호 브랜치 |
 | 릴리즈 기준 | 태그 규칙, 릴리즈 노트, 배포 산출물 버전명 |
 | 반입/반출 | 외부 PC에서 내부망으로 소스/라이브러리 반입하는 절차 |
-| 의존성 캐시 | npm, Gradle 의존성 캐시 또는 내부 Nexus/Artifactory 사용 여부 |
+| 의존성 캐시 | npm, Gradle 의존성 캐시, `offline/` 반입 방식 또는 내부 Nexus/Artifactory 사용 여부 |
 | 민감정보 관리 | `.env`, 인증서, 접속 정보, 운영 설정의 저장 금지 기준 |
 
 ### 산출물 후보
@@ -34,6 +34,7 @@
 - 코드리뷰 체크리스트
 - 반입/반출 체크리스트
 - 의존성 캐시 준비 절차
+- 인터넷 가능 빌드와 내부망 오프라인 빌드 분기 절차
 
 ## 2. OCI Oracle Linux 운영 배포 전략
 
@@ -67,7 +68,7 @@
 | 네트워크 | VCN, subnet, security list, load balancer 사용 여부 |
 | 런타임 | JDK 설치 방식, Node/npm이 운영 서버에 필요한지 여부 |
 | 배포 위치 | frontend 정적 파일 경로, backend JAR 경로 |
-| 환경 설정 | datasource, 포트, 외부 연계 주소, secret 주입 방식 |
+| 환경 설정 | datasource, `SERVER_ADDRESS=127.0.0.1`, 포트, 외부 연계 주소, secret 주입 방식 |
 | Redis | host, port, database, password, health check 정책 |
 | SAML | IdP metadata, ACS URL, 그룹 attribute, SLO 요구 여부 |
 | Oracle Batch | Spring Batch `BATCH_*` 메타테이블 선생성 방식 |
@@ -82,7 +83,7 @@
 - Oracle Linux 운영 배포 가이드
 - 서버 디렉터리 구조
 - systemd 서비스 파일 기준
-- Nginx 설정 기준
+- Nginx HTTP/HTTPS 설정 기준
 - 배포 체크리스트
 - 롤백 체크리스트
 - 운영 점검 체크리스트
@@ -94,6 +95,7 @@
 | 내부망 형상관리 | 프로젝트 투입 후 내부 정책 확인 전까지 상세 설계 보류 |
 | Oracle Linux 운영 배포 | 기본 실행 절차는 `개선사항/운영작업문서-서버실행-AZ.md`에 상세화 완료. 현장 계정/경로/보안정책은 투입 후 치환 |
 | SAML SSO | SAML2 SP 방식 확정. IAM/KNOX 실제 metadata와 그룹 매핑은 투입 후 확정 |
+| 권한관리 | IAM 기본 3개 역할과 포털 권한 DB 구조 구현. 실제 IAM/AD 그룹명은 투입 후 `portal_iam_role.external_group_name`에 반영 |
 | 외부 REST API | 공통 RestClient/HTTP Interface 구조 확정. 시스템별 endpoint/인증/성공판정은 투입 후 확정 |
 | 예외/로깅 | GlobalExceptionHandler, requestId, AOP 로깅, 프론트 handleApiError 기준 반영 |
 | 현재 문서 역할 | 후속 작업 누락 방지를 위한 현장 확인 항목 관리 |
@@ -107,7 +109,7 @@
 |---|---|
 | API 엔드포인트, request/response | 상세 기능 설계 착수 후 |
 | 테이블명, 컬럼명, ERD | 데이터 저장 범위 확정 후 |
-| 권한 코드 상세, 감사 정책 | 보안/계정 연계 기준 확인 후 |
+| 권한 변경 감사 정책 | 보안/계정 연계 기준 확인 후 |
 | 외부 시스템별 호출 상세 | OCI, Dataiku, GenON, Anyflow 등 연계 요건 확인 후 |
 | 배치, 큐, DLQ, webhook | 비동기 처리와 실패 재처리 요건 확인 후 |
 | 운영 Swagger/Actuator 노출 | 운영 보안 정책 확인 후 |

@@ -8,6 +8,7 @@
 
 ```powershell
 cd frontend
+npm.cmd run lint
 npm.cmd run build
 ```
 
@@ -28,6 +29,7 @@ cd backend
 ## 화면 확인
 
 - `/`, `/sample-list`, `/sample-list-jpa` 진입 여부
+- `/system/permissions`는 `PERMISSION_MANAGE` 권한 계정에서 진입 여부
 - 검색, 초기화, 페이지 변경, 페이지 크기 변경, 정렬 변경
 - API 실패 시 오류 메시지 표시
 - 권한 없는 화면 진입 시 `/forbidden` 이동

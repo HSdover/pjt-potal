@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/admin/batch/jobs")
+@PreAuthorize("@portalPermissionService.hasPermission(authentication, 'BATCH_ADMIN')")
 public class BatchExecutionController {
 
     private final BatchJobLauncherService batchJobLauncherService;
@@ -21,7 +23,6 @@ public class BatchExecutionController {
         this.batchJobLauncherService = batchJobLauncherService;
     }
 
-    // SSO/권한 적용 후에는 관리자 권한(예: BATCH_ADMIN)으로 제한해야 한다.
     @GetMapping
     public List<BatchJobSummary> listJobs() {
         return batchJobLauncherService.listJobs();

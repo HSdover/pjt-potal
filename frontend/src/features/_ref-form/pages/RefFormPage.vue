@@ -5,6 +5,7 @@ import { ElCard, ElForm, ElFormItem, ElMessage } from "element-plus";
 import AuthButton from "@/shared/components/auth/AuthButton.vue";
 import { PortalDateInput, PortalSelect, PortalTextInput, PortalTextarea } from "@/shared/components/tags";
 import { handleApiError } from "@/shared/api/error-handler";
+import { confirmSave, confirmUpdate } from "@/shared/feedback/confirm-dialog";
 import { fieldError, maxLengthText, requiredText } from "@/shared/validation/vuelidate";
 import { createForm, fetchFormList, updateForm } from "../api";
 import type { RefFormItem, RefFormSaveRequest } from "../types";
@@ -24,7 +25,7 @@ const form = reactive<RefFormSaveRequest>({
   priority: "NORMAL",
 });
 
-const categories = ["기준정보", "정책", "보안", "운영"];
+const categories = ["파이프라인", "AI Agent", "보안", "운영"];
 const priorities = ["HIGH", "NORMAL", "LOW"];
 const categoryOptions = categories.map((value) => ({ label: value, value }));
 const priorityOptions = priorities.map((value) => ({ label: value, value }));
@@ -89,6 +90,13 @@ async function save() {
   const valid = await v$.value.$validate();
   if (!valid) {
     ElMessage.warning("입력값을 확인하세요.");
+    return;
+  }
+
+  const confirmed = mode.value === "create"
+    ? await confirmSave("참고 폼을 등록하시겠습니까?")
+    : await confirmUpdate("참고 폼을 수정하시겠습니까?");
+  if (!confirmed) {
     return;
   }
 

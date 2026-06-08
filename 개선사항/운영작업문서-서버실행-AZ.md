@@ -249,11 +249,13 @@ sudo vi /opt/governance-portal/config/governance-portal.env
 Oracle DB/ADB + SAML 기준 예시:
 
 ```bash
-SPRING_PROFILES_ACTIVE=saml,adb
+SPRING_PROFILES_ACTIVE=saml,prod
 SERVER_PORT=18080
 
 GOVERNANCE_H2_CONSOLE_ENABLED=false
 GOVERNANCE_SQL_INIT_MODE=never
+GOVERNANCE_MULTIPART_MAX_FILE_SIZE=20MB
+GOVERNANCE_MULTIPART_MAX_REQUEST_SIZE=25MB
 
 # Spring Batch 메타테이블(BATCH_*)은 Oracle에서 자동 생성되지 않는다.
 # 권장: DBA가 Spring Batch 공식 schema-oracle.sql로 BATCH_ 테이블을 선생성하고 아래는 never로 둔다.
@@ -261,10 +263,10 @@ GOVERNANCE_SQL_INIT_MODE=never
 #       (always 상태로 재기동하면 기존 테이블에 CREATE를 다시 시도해 오류가 난다)
 GOVERNANCE_BATCH_SCHEMA_INITIALIZE=never
 
-GOVERNANCE_DATASOURCE_URL=jdbc:oracle:thin:@//db-host:1521/service
-GOVERNANCE_DATASOURCE_DRIVER=oracle.jdbc.OracleDriver
-GOVERNANCE_DATASOURCE_USERNAME=appuser
-GOVERNANCE_DATASOURCE_PASSWORD=change-me
+GOVERNANCE_PROD_DATASOURCE_URL=jdbc:oracle:thin:@//prod-db-host:1521/service
+GOVERNANCE_PROD_DATASOURCE_DRIVER=oracle.jdbc.OracleDriver
+GOVERNANCE_PROD_DATASOURCE_USERNAME=appuser
+GOVERNANCE_PROD_DATASOURCE_PASSWORD=change-me
 
 GOVERNANCE_CACHE_TYPE=redis
 GOVERNANCE_CACHE_REDIS_TTL=300s
@@ -288,7 +290,7 @@ SAML_SP_ACS_LOCATION=https://portal.example.com/login/saml2/sso/knox
 ADB Wallet 방식이면 datasource URL은 아래 형태를 사용한다.
 
 ```bash
-GOVERNANCE_DATASOURCE_URL=jdbc:oracle:thin:@db_high?TNS_ADMIN=/opt/governance-portal/config/wallet
+GOVERNANCE_PROD_DATASOURCE_URL=jdbc:oracle:thin:@prod_db_high?TNS_ADMIN=/opt/governance-portal/config/wallet
 ```
 
 권한 설정:
@@ -313,7 +315,7 @@ nc -zv redis-host 6379     # Redis cache 접속 점검
 
 ## 10. Nginx 설정
 
-SAML을 사용하므로 `/api/`, `/login/`, `/saml2/`, `/actuator/`를 Spring Boot로 프록시해야 한다. Swagger/API 문서를 운영망에서 열어야 하면 `infra/nginx/governance-portal.conf` 템플릿처럼 `/api-docs/`, `/api-docs`, `/swagger-ui/`, `/swagger-ui.html`도 같이 프록시한다.
+SAML을 사용하므로 `/api/`, `/login/`, `/saml2/`, `/actuator/`를 Spring Boot로 프록시해야 한다.
 
 ```bash
 sudo vi /etc/nginx/conf.d/governance-portal.conf
@@ -342,6 +344,7 @@ server {
 
     root /var/www/governance-portal;
     index index.html;
+    client_max_body_size 25m;
     access_log /var/log/nginx/governance-portal.access.log governance_portal;
     error_log  /var/log/nginx/governance-portal.error.log;
 
@@ -463,6 +466,7 @@ server {
 
     root /var/www/governance-portal;
     index index.html;
+    client_max_body_size 25m;
     access_log /var/log/nginx/governance-portal.access.log governance_portal;
     error_log  /var/log/nginx/governance-portal.error.log;
 
@@ -588,11 +592,9 @@ sudo rm -f /tmp/idp-metadata.xml
 
 ```bash
 journalctl -u governance-portal -f
-tail -f /var/log/nginx/governance-portal.error.log
-tail -f /var/log/nginx/governance-portal.access.log
+tail -f /var/log/nginx/error.log
+tail -f /var/log/nginx/access.log
 ```
-
-10장에서 제공한 Nginx 설정을 적용하면 `/var/log/nginx/governance-portal.access.log`에 `request_id=...`가 남는다. 백엔드 로그의 `requestId`와 같은 값이므로 화면 오류의 요청ID로 Nginx와 Spring Boot 로그를 함께 조회한다.
 
 journald 보존 용량을 제한하려면 `/etc/systemd/journald.conf`에서 `SystemMaxUse`를 설정한다(예: `SystemMaxUse=500M`) 후 `sudo systemctl restart systemd-journald`.
 
@@ -616,6 +618,7 @@ ss -lntp | grep ':80\|:443'
 | SAML 실패 | HTTPS/ACS https 여부(10-1), `/login/`·`/saml2/` 프록시, IdP metadata egress(`file:` 옵션), ACS URL, 서버 시간 |
 | HTTPS 접속 실패 | 443 NSG/firewalld 허용, 인증서 경로/권한, `sudo nginx -t` |
 | 권한 없음 | SAML group attribute와 내부 권한 매핑 설정 |
+| 엑셀 업로드 413 | Nginx `client_max_body_size 25m`, env `GOVERNANCE_MULTIPART_MAX_FILE_SIZE=20MB`, `GOVERNANCE_MULTIPART_MAX_REQUEST_SIZE=25MB` |
 
 ## 15. 롤백 준비
 

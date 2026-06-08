@@ -83,7 +83,7 @@ Oracle Linux VM
         |-- OCI/외부 모듈 REST API
 ```
 
-중요한 기준은 Spring Boot 포트 `18080`을 외부에 직접 열지 않는 것이다. 외부 사용자는 Nginx의 `80/443`으로만 접근하고, Nginx가 내부의 Spring Boot로 요청을 넘긴다.
+중요한 기준은 Spring Boot 포트 `18080`을 외부에 직접 열지 않는 것이다. 외부 사용자는 Nginx의 `80/443`으로만 접근하고, Nginx가 내부의 Spring Boot로 요청을 넘긴다. 운영 env에는 `SERVER_ADDRESS=127.0.0.1`을 넣어 Spring Boot 자체도 localhost에만 bind한다.
 
 Nginx는 `X-Request-Id`를 백엔드에 전달하고, 백엔드는 같은 값을 MDC와 응답 헤더에 남긴다. 장애 대응 시에는 이 requestId로 Nginx access log, Spring Boot 로그, 외부 REST API 로그를 함께 조회한다.
 
@@ -97,6 +97,7 @@ Nginx는 `X-Request-Id`를 백엔드에 전달하고, 백엔드는 같은 값을
 | 18080 | Spring Boot | 백엔드 API | 외부 공개 금지. `127.0.0.1` 내부 접근만 |
 
 접속이 되려면 OCI Security List/NSG와 Oracle Linux `firewalld` 양쪽에서 허용되어야 한다.
+`18080`은 방화벽에서 막는 것에 더해 애플리케이션 bind address도 `127.0.0.1`로 제한한다.
 
 ## Windows PC의 역할
 
@@ -133,6 +134,7 @@ Oracle Linux 서버에서는 아래 작업을 한다.
 Windows PC
   |
   | build-production.ps1
+  | 또는 내부망이면 build-offline-jar.ps1
   v
 frontend/dist
 backend/build/libs/governance-portal-backend.jar
@@ -156,8 +158,11 @@ Oracle Linux /tmp 또는 releases 디렉터리
 frontend/dist/**
 backend/build/libs/governance-portal-backend.jar
 infra/nginx/governance-portal.conf
+infra/nginx/governance-portal-https.conf
 infra/systemd/governance-portal.service
 ```
+
+빌드 PC가 인터넷 가능한 환경이면 `scripts/build-production.ps1`을 사용한다. 내부망처럼 인터넷 접근이 막힌 환경이면 외부망 PC에서 `scripts/prepare-offline-bundle.ps1`로 `offline/` 캐시를 준비한 뒤 내부망 PC에서 `scripts/build-offline-jar.ps1`을 사용한다. 운영 서버에서는 빌드하지 않고 산출물만 반영한다.
 
 운영 전용 보안/설정 파일은 별도로 준비한다.
 
@@ -169,7 +174,9 @@ DB 접속 정보
 Oracle Wallet, 필요 시
 ```
 
-Oracle DB를 사용할 경우 백엔드 JAR에는 `ojdbc11` JDBC 드라이버가 포함되어야 한다. 현재 프로젝트는 Oracle DB 전환을 고려해 `com.oracle.database.jdbc:ojdbc11` 런타임 의존성을 사용한다. 운영 env에는 `GOVERNANCE_DATASOURCE_URL`, `GOVERNANCE_DATASOURCE_DRIVER=oracle.jdbc.OracleDriver`, DB 계정/비밀번호를 주입한다.
+Oracle DB를 사용할 경우 백엔드 JAR에는 `ojdbc11` JDBC 드라이버가 포함되어야 한다. 현재 프로젝트는 Oracle DB 전환을 고려해 `com.oracle.database.jdbc:ojdbc11` 런타임 의존성을 사용한다. 운영 env에는 `GOVERNANCE_PROD_DATASOURCE_URL`, `GOVERNANCE_PROD_DATASOURCE_DRIVER=oracle.jdbc.OracleDriver`, DB 계정/비밀번호를 주입한다.
+
+`infra/nginx/governance-portal.conf`는 HTTP 80 초기 확인용이고, SAML 운영은 `infra/nginx/governance-portal-https.conf`를 기준으로 실제 도메인과 TLS 인증서 경로를 치환해 적용한다.
 
 Oracle Autonomous Database처럼 Wallet 기반 접속을 사용할 때는 Wallet 파일과 Oracle security companion JAR 필요 여부를 DBA/OCI 담당자와 별도로 확인한다.
 
@@ -186,7 +193,7 @@ GOVERNANCE_REDIS_PASSWORD=
 GOVERNANCE_REDIS_HEALTH_ENABLED=true
 ```
 
-로컬 개발(`local` profile)은 Redis 없이도 실행되도록 기본 캐시가 `simple`이다. 운영(`saml,adb`)은 Redis 접속이 실패하면 health check 또는 캐시 사용 구간에서 문제가 드러날 수 있으므로, 서비스 기동 전에 `nc -zv redis-host 6379`로 도달성을 확인한다.
+로컬 개발(`local` profile)은 Redis 없이도 실행되도록 기본 캐시가 `simple`이다. 운영(`saml,prod`)은 Redis 접속이 실패하면 health check 또는 캐시 사용 구간에서 문제가 드러날 수 있으므로, 서비스 기동 전에 `nc -zv redis-host 6379`로 도달성을 확인한다.
 
 ## 외부 REST API 연계 구조
 
@@ -216,7 +223,7 @@ GOVERNANCE_EXTERNAL_API_LOGGING_ENABLED=true
 
 ## 개발 DB 전환 방식
 
-개발 환경에서는 H2와 ADB를 profile로 전환한다. `application.yml`을 직접 고쳐가며 바꾸지 않는다.
+개발 환경에서는 H2와 실제 개발 DB를 profile로 전환한다. `application.yml`을 직접 고쳐가며 바꾸지 않는다.
 
 기본값은 H2다.
 
@@ -233,13 +240,13 @@ cd C:\workspace\governance-portal\backend
 .\gradlew.bat bootRun
 ```
 
-ADB 개발 실행은 `adb` profile을 추가한다.
+개발서버 Oracle/ADB DB 실행은 `dev` profile을 사용한다.
 
 ```powershell
-$env:SPRING_PROFILES_ACTIVE="local,adb"
-$env:GOVERNANCE_DATASOURCE_URL="jdbc:oracle:thin:@db_high?TNS_ADMIN=C:/workspace/secrets/adb-wallet"
-$env:GOVERNANCE_DATASOURCE_USERNAME="appuser"
-$env:GOVERNANCE_DATASOURCE_PASSWORD="password"
+$env:SPRING_PROFILES_ACTIVE="saml,dev"
+$env:GOVERNANCE_DEV_DATASOURCE_URL="jdbc:oracle:thin:@dev_db_high?TNS_ADMIN=C:/workspace/secrets/adb-wallet"
+$env:GOVERNANCE_DEV_DATASOURCE_USERNAME="dev_appuser"
+$env:GOVERNANCE_DEV_DATASOURCE_PASSWORD="password"
 
 cd C:\workspace\governance-portal\backend
 .\gradlew.bat bootRun
@@ -248,22 +255,25 @@ cd C:\workspace\governance-portal\backend
 일반 Oracle DB에 직접 접속하는 경우:
 
 ```powershell
-$env:SPRING_PROFILES_ACTIVE="local,adb"
-$env:GOVERNANCE_DATASOURCE_URL="jdbc:oracle:thin:@//db-host:1521/service"
-$env:GOVERNANCE_DATASOURCE_USERNAME="appuser"
-$env:GOVERNANCE_DATASOURCE_PASSWORD="password"
+$env:SPRING_PROFILES_ACTIVE="saml,dev"
+$env:GOVERNANCE_DEV_DATASOURCE_URL="jdbc:oracle:thin:@//dev-db-host:1521/service"
+$env:GOVERNANCE_DEV_DATASOURCE_USERNAME="dev_appuser"
+$env:GOVERNANCE_DEV_DATASOURCE_PASSWORD="password"
 ```
 
-H2로 되돌릴 때는 `adb` profile과 DB 환경변수를 제거한다.
+H2로 되돌릴 때는 `dev` profile과 DB 환경변수를 제거한다.
 
 ```powershell
 $env:SPRING_PROFILES_ACTIVE="local"
 Remove-Item Env:\GOVERNANCE_DATASOURCE_URL -ErrorAction SilentlyContinue
 Remove-Item Env:\GOVERNANCE_DATASOURCE_USERNAME -ErrorAction SilentlyContinue
 Remove-Item Env:\GOVERNANCE_DATASOURCE_PASSWORD -ErrorAction SilentlyContinue
+Remove-Item Env:\GOVERNANCE_DEV_DATASOURCE_URL -ErrorAction SilentlyContinue
+Remove-Item Env:\GOVERNANCE_DEV_DATASOURCE_USERNAME -ErrorAction SilentlyContinue
+Remove-Item Env:\GOVERNANCE_DEV_DATASOURCE_PASSWORD -ErrorAction SilentlyContinue
 ```
 
-ADB profile이 켜지면 H2 console은 꺼지고 SQL init은 `never`로 고정된다. 현재 `ddl-auto`는 `none`이므로 ADB에 테이블이 없으면 sample API가 실패할 수 있다.
+`dev`/`prod` profile이 켜지면 H2 console은 꺼지고 SQL init은 `never`로 고정된다. 현재 `ddl-auto`는 `none`이므로 실제 DB에 테이블이 없으면 API가 실패할 수 있다.
 
 ## SAML 흐름
 

@@ -15,7 +15,7 @@
 | SAML 프로파일 | `backend/src/main/resources/application-saml.yml` 추가 |
 | 보안 체인 | `saml` 프로파일에서 `saml2Login()` 사용 |
 | CSRF 정책 | API 쓰기 요청은 CSRF 보호, SAML ACS `POST /login/saml2/sso/**`만 예외, SPA 헤더 토큰은 plain 토큰으로 검증 |
-| 권한 매핑 | SAML 그룹/역할 attribute를 내부 권한 코드로 변환 |
+| 권한 매핑 | SAML 그룹/역할 attribute를 DB 권한관리 테이블의 IAM 역할/그룹/사용자 권한으로 변환 |
 | 로그아웃 | 현재는 로컬 세션 로그아웃만 적용. SAML SLO는 IAM/KNOX 정책 확인 후 적용 |
 | 프론트 로그인 진입 | 기본값 `/saml2/authenticate/knox` |
 | 로컬 개발 | `local` 프로파일의 임시 권한 사용자 유지 |
@@ -28,10 +28,10 @@
 SPRING_PROFILES_ACTIVE=local
 ```
 
-SAML 연동 검증 또는 운영 환경은 SAML 프로파일을 사용한다.
+SAML 연동 검증은 `saml` 프로파일을 사용하고, 실제 개발/운영 DB를 사용할 때는 `dev` 또는 `prod` 프로파일을 함께 사용한다.
 
 ```bash
-SPRING_PROFILES_ACTIVE=saml
+SPRING_PROFILES_ACTIVE=saml,dev
 SAML_IDP_METADATA_URI=https://idp.example.com/metadata
 ```
 
@@ -58,7 +58,7 @@ VITE_LOGIN_ENTRY_PATH=/saml2/authenticate/knox
 | IdP 인증서 | SAMLResponse 서명 검증용 |
 | NameID 형식 | 사번, 계정 ID, 이메일 중 어떤 값인지 확인 |
 | 사용자 attribute | `uid`, `employeeNumber`, `displayName`, `roles`, `groups` 등 |
-| 권한 attribute | 포털 권한으로 매핑할 그룹/역할 속성 |
+| 권한 attribute | `roles`, `groups`, `memberOf` 등 IAM 역할/AD 그룹 속성 |
 
 ## IAM/KNOX에 등록할 SP 값
 
@@ -93,9 +93,19 @@ http://localhost:18080/saml2/authenticate/knox
 |---|---|
 | `userId` | `uid` -> `employeeNumber` -> `sAMAccountName` -> SAML NameID |
 | `displayName` | `displayName` -> `cn` -> `name` -> `userId` |
-| `permissions` | SAML 그룹/역할 매핑 결과. 필요 시 내부 권한 코드만 직접 권한 attribute로 허용 |
+| `permissions` | DB 권한관리 테이블과 보조 YAML 매핑을 합산한 내부 권한 코드 목록 |
 
-IAM/KNOX가 내려주는 그룹명은 포털 내부 권한명과 다를 수 있으므로 원문을 그대로 권한으로 쓰지 않는다. `roles`, `groups`, `memberOf` 값은 아래 설정을 통해 내부 권한 코드로 변환한다.
+IAM/KNOX가 내려주는 그룹명은 포털 내부 권한명과 다를 수 있으므로 원문을 그대로 권한으로 쓰지 않는다. `roles`, `groups`, `memberOf` 값은 먼저 DB의 `portal_iam_role.external_group_name`, `portal_iam_role.role_name`, `portal_iam_role.role_code`와 매칭한다.
+
+현재 기본 IAM 역할:
+
+| IAM 역할 | `portal_iam_role.role_code` | 설명 |
+|---|---|---|
+| 관리자 | `ADMIN` | 포털 전체 메뉴와 관리 기능 |
+| AI 에이전트관리자 | `AI_AGENT_ADMIN` | AI 데이터, 신청, 대시보드 중심 권한 |
+| 데이터 관리자 | `DATA_ADMIN` | 메타데이터, 파이프라인, DP뷰어, 데이터 반입 권한 |
+
+사용자별 예외 권한은 `portal_permission_assignment.subject_type = 'USER'`, AD 그룹별 예외 권한은 `subject_type = 'GROUP'`으로 관리한다. `application-saml.yml`의 `group-permission-mappings`는 DB 매핑이 준비되지 않은 초기 검증 또는 레거시 fallback 용도다.
 
 ```yaml
 app:
@@ -107,25 +117,19 @@ app:
         - roles
         - groups
         - memberOf
-      group-permission-mappings:
-        KNOX_DG_PORTAL_ADMIN:
-          - DASHBOARD_READ
-          - SAMPLE_READ
-          - BATCH_ADMIN
-        KNOX_DG_PORTAL_VIEWER:
-          - DASHBOARD_READ
+      group-permission-mappings: {}
 ```
 
-`memberOf`가 `CN=KNOX_DG_PORTAL_ADMIN,OU=Groups,DC=example,DC=com` 같은 DN 형식으로 내려오면 `CN` 값을 추출해서 매핑한다. 최종 운영 전 IAM/KNOX에서 실제 내려주는 그룹명과 attribute명을 확인한 뒤 이 매핑을 채워야 한다.
+`memberOf`가 `CN=관리자,OU=Groups,DC=example,DC=com` 같은 DN 형식으로 내려오면 `CN` 값을 추출해서 DB 역할명과 매칭한다. 최종 운영 전 IAM/KNOX에서 실제 내려주는 그룹명과 attribute명을 확인한 뒤 `portal_iam_role.external_group_name` 값을 맞춘다.
 
 ## 확인 순서
 
-1. `SPRING_PROFILES_ACTIVE=saml`과 `SAML_IDP_METADATA_URI`를 설정하고 백엔드를 기동한다.
+1. `SPRING_PROFILES_ACTIVE=saml,dev` 또는 `saml,prod`와 `SAML_IDP_METADATA_URI`를 설정하고 백엔드를 기동한다.
 2. `/saml2/service-provider-metadata/knox`가 열리는지 확인한다.
 3. 해당 metadata 또는 위 SP 값을 IAM/KNOX에 등록한다.
 4. `/saml2/authenticate/knox` 접근 시 IdP 로그인 화면으로 이동하는지 확인한다.
 5. 로그인 성공 후 `/login/saml2/sso/knox`로 SAMLResponse가 들어오는지 확인한다.
-6. `/api/me` 응답에서 `authenticated=true`, 사용자 ID, attribute 기반 권한이 내려오는지 확인한다.
+6. `/api/me` 응답에서 `authenticated=true`, 사용자 ID, DB 권한관리 기반 권한이 내려오는지 확인한다.
 7. 프론트 화면에서 권한 기반 메뉴/버튼 노출이 맞는지 확인한다.
 
 ## 로그아웃 정책
@@ -164,6 +168,7 @@ SLO를 켜는 경우 `/logout/saml2/slo/**` 엔드포인트, CSRF 예외 필요 
 
 - 운영 환경에서는 반드시 `SPRING_PROFILES_ACTIVE=saml`을 포함해야 한다.
 - `local` 프로파일은 개발 편의를 위한 임시 권한 방식이므로 운영에서 사용하면 안 된다.
+- 운영에서 권한관리 화면을 사용할 관리자 역할에는 `PERMISSION_MANAGE` 권한이 있어야 한다.
 - SAML은 브라우저 리다이렉트와 백엔드 세션을 기반으로 처리한다. 프론트가 JWT를 저장하거나 SAMLResponse를 직접 파싱하지 않는다.
 - SAML ACS POST는 IdP가 자동 제출하는 폼이므로 CSRF 토큰을 포함할 수 없다. 대신 SAMLResponse 서명, issuer, audience, destination, 만료 시간 검증으로 보호한다.
 - 프론트는 `XSRF-TOKEN` 쿠키의 plain 값을 `X-XSRF-TOKEN` 헤더로 보내므로, 백엔드는 SPA 전용 CSRF request handler로 헤더 토큰을 plain 값으로 검증한다.

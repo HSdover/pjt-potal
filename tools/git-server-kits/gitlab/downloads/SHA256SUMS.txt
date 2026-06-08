@@ -1,0 +1,3 @@
+53c9d5f19fe1c3b15d323a5932968bef5dca6aa128dc0374dd2e4d0587d94e20  gitlab-ce-18.6.6-ce.0.el9.x86_64.rpm
+003c0ca2fea61767f8c6de7a1c0f49fc88ea3c8db95e3cd1856b32ce9d876e0f  gitlab-ce-gpgkey
+c599422b55f2eb86286c6a98f9bf26c216448e7bbf7ea1ae1cd8fbef570a3c87  gitlab-ce-script.rpm.sh

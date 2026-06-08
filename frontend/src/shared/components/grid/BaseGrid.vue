@@ -1,7 +1,7 @@
 <script setup lang="ts" generic="TRow extends object">
 import { computed } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
-import type { ColDef, RowClickedEvent, SortChangedEvent } from "ag-grid-community";
+import type { ColDef, RowClassParams, RowClickedEvent, SortChangedEvent } from "ag-grid-community";
 import PortalPagination from "@/shared/components/tags/PortalPagination.vue";
 import type { ListSort } from "@/shared/types/list";
 
@@ -14,6 +14,7 @@ const props = withDefaults(defineProps<{
   pageSize?: number;
   heightClass?: string;
   rowSelection?: "single" | "multiple";
+  pinnedBottomRows?: TRow[];
 }>(), {
   loading: false,
   totalCount: 0,
@@ -48,6 +49,10 @@ const currentPageSize = computed({
 });
 
 function onRowClicked(event: RowClickedEvent<TRow>) {
+  if (event.node.rowPinned) {
+    return;
+  }
+
   if (event.data) {
     emit("rowClick", event.data);
   }
@@ -64,6 +69,10 @@ function onSortChanged(event: SortChangedEvent) {
 
   emit("sortChange", sort);
 }
+
+function getRowClass(params: RowClassParams<TRow>) {
+  return params.node.rowPinned ? "portal-grid-stat-row" : undefined;
+}
 </script>
 
 <template>
@@ -75,6 +84,8 @@ function onSortChanged(event: SortChangedEvent) {
         :row-data="rows"
         :column-defs="columns"
         :default-col-def="defaultColDef"
+        :pinned-bottom-row-data="pinnedBottomRows"
+        :get-row-class="getRowClass"
         :row-selection="rowSelection"
         animate-rows
         @row-clicked="onRowClicked"
@@ -92,3 +103,15 @@ function onSortChanged(event: SortChangedEvent) {
     </div>
   </div>
 </template>
+
+<style scoped>
+:deep(.portal-grid-stat-row) {
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 700;
+}
+
+:deep(.portal-grid-stat-row .ag-cell) {
+  border-top: 1px solid #cbd5e1;
+}
+</style>

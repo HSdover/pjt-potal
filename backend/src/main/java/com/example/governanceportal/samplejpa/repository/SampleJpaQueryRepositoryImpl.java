@@ -29,6 +29,14 @@ public class SampleJpaQueryRepositoryImpl implements SampleJpaQueryRepository {
 
     @Override
     public Page<SampleJpa> search(SampleJpaSearchFilter filters, Pageable pageable) {
+        List<SampleJpa> rows = searchRows(filters, pageable);
+        long totalCount = countBySearchFilter(filters);
+
+        return new PageImpl<>(rows, pageable, totalCount);
+    }
+
+    @Override
+    public List<SampleJpa> searchRows(SampleJpaSearchFilter filters, Pageable pageable) {
         Predicate keywordCondition = containsKeyword(filters);
 
         JPAQuery<SampleJpa> rowQuery = queryFactory
@@ -37,19 +45,28 @@ public class SampleJpaQueryRepositoryImpl implements SampleJpaQueryRepository {
             .offset(pageable.getOffset())
             .limit(pageable.getPageSize());
 
+        if (keywordCondition != null) {
+            rowQuery.where(keywordCondition);
+        }
+
+        return rowQuery.fetch();
+    }
+
+    @Override
+    public long countBySearchFilter(SampleJpaSearchFilter filters) {
+        Predicate keywordCondition = containsKeyword(filters);
+
         JPAQuery<Long> countQuery = queryFactory
             .select(sampleJpa.count())
             .from(sampleJpa);
 
         if (keywordCondition != null) {
-            rowQuery.where(keywordCondition);
             countQuery.where(keywordCondition);
         }
 
-        List<SampleJpa> rows = rowQuery.fetch();
         Long totalCount = countQuery.fetchOne();
 
-        return new PageImpl<>(rows, pageable, totalCount == null ? 0 : totalCount);
+        return totalCount == null ? 0 : totalCount;
     }
 
     private Predicate containsKeyword(SampleJpaSearchFilter filters) {

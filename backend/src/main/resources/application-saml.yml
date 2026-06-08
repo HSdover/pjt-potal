@@ -15,7 +15,9 @@ spring:
               metadata-uri: ${SAML_IDP_METADATA_URI}
 
 # Portal permission mapping for SAML-authenticated users.
-# Placeholders until IAM/KNOX confirms the real group attribute names and group values.
+# IAM role names are primarily matched against portal_iam_role.external_group_name in DB.
+# The local seed starts with: 관리자, AI 에이전트관리자, 데이터 관리자.
+# Keep group-attributes aligned with the attributes IAM/AD sends.
 app:
   auth:
     saml:
@@ -28,9 +30,8 @@ app:
         - roles
         - groups
         - memberOf
-      # IdP group name -> internal portal permission codes.
+      # Optional fallback: IdP group name -> internal portal permission codes.
       # Group names may arrive as plain CN or full LDAP DN (CN=...,OU=...); both match by common name.
-      # Replace the examples below with the real IAM group names, then uncomment.
       group-permission-mappings:
         # KNOX_DG_PORTAL_ADMIN:
         #   - DASHBOARD_READ

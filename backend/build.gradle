@@ -16,6 +16,7 @@ repositories {
 
 def querydslVersion = "5.1.0"
 def oracleJdbcVersion = "23.26.1.0.0"
+def easyExcelVersion = "4.0.3"
 
 java {
     toolchain {
@@ -42,6 +43,7 @@ dependencies {
     implementation "org.springframework.security:spring-security-saml2-service-provider"
     implementation "org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.4"
     implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0"
+    implementation "com.alibaba:easyexcel:${easyExcelVersion}"
     implementation "com.querydsl:querydsl-jpa:${querydslVersion}:jakarta"
     implementation "com.oracle.oci.sdk:oci-java-sdk-common:3.50.2"
     compileOnly "org.projectlombok:lombok"

@@ -4,69 +4,78 @@ import com.example.governanceportal.common.error.BusinessException;
 import com.example.governanceportal.reference.approval.dto.RefApprovalDecisionRequest;
 import com.example.governanceportal.reference.approval.dto.RefApprovalHistoryItem;
 import com.example.governanceportal.reference.approval.dto.RefApprovalItem;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class RefApprovalService {
 
-    private final Map<Long, RefApprovalItem> store = new LinkedHashMap<>();
+    private final JdbcTemplate jdbcTemplate;
 
-    public RefApprovalService() {
-        store.put(1L, new RefApprovalItem(
-            1L,
-            "Agent A의 고객 분석 데이터셋 접근 신청",
-            "김신청",
-            "AI 추진팀",
-            "DATA_ACCESS",
-            "Agent A가 고객 분석 데이터셋(customer_analytics)에 read 권한 신청",
-            "REVIEW",
-            LocalDateTime.of(2026, 5, 10, 10, 12),
-            null,
-            new ArrayList<>(List.of(
-                new RefApprovalHistoryItem(null, "DRAFT", "김신청", "초안 작성", LocalDateTime.of(2026, 5, 9, 18, 0)),
-                new RefApprovalHistoryItem("DRAFT", "SUBMITTED", "김신청", "결재 상신", LocalDateTime.of(2026, 5, 10, 10, 12)),
-                new RefApprovalHistoryItem("SUBMITTED", "REVIEW", "박검토", "검토 시작", LocalDateTime.of(2026, 5, 11, 9, 30))
-            ))
-        ));
-        store.put(2L, new RefApprovalItem(
-            2L,
-            "전처리 파이프라인 상용 배포 신청",
-            "이배포",
-            "데이터플랫폼팀",
-            "PIPELINE_DEPLOY",
-            "신규 전처리 파이프라인(daily_summary_v3)의 상용 환경 반영",
-            "APPROVED",
-            LocalDateTime.of(2026, 5, 5, 14, 0),
-            LocalDateTime.of(2026, 5, 7, 11, 20),
-            new ArrayList<>(List.of(
-                new RefApprovalHistoryItem(null, "DRAFT", "이배포", "초안 작성", LocalDateTime.of(2026, 5, 4, 16, 0)),
-                new RefApprovalHistoryItem("DRAFT", "SUBMITTED", "이배포", "결재 상신", LocalDateTime.of(2026, 5, 5, 14, 0)),
-                new RefApprovalHistoryItem("SUBMITTED", "APPROVED", "최승인", "테스트 결과 양호", LocalDateTime.of(2026, 5, 7, 11, 20))
-            ))
-        ));
+    public RefApprovalService(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     public RefApprovalItem findById(Long id) {
-        RefApprovalItem item = store.get(id);
-        if (item == null) {
+        try {
+            ApprovalRow row = jdbcTemplate.queryForObject(
+                """
+                SELECT id,
+                       request_title,
+                       requester_name,
+                       requester_team,
+                       request_type,
+                       summary,
+                       status,
+                       submitted_at,
+                       decided_at
+                FROM gov_access_request
+                WHERE id = ?
+                """,
+                this::mapApprovalRow,
+                id
+            );
+            return toItem(row);
+        } catch (EmptyResultDataAccessException error) {
             throw BusinessException.notFound("Reference approval not found: " + id);
         }
-        return item;
     }
 
     public List<RefApprovalItem> findAll() {
-        return List.copyOf(store.values());
+        return jdbcTemplate.query(
+                """
+                SELECT id,
+                       request_title,
+                       requester_name,
+                       requester_team,
+                       request_type,
+                       summary,
+                       status,
+                       submitted_at,
+                       decided_at
+                FROM gov_access_request
+                ORDER BY submitted_at DESC, id DESC
+                """,
+                this::mapApprovalRow
+            )
+            .stream()
+            .map(this::toItem)
+            .toList();
     }
 
+    @Transactional
     public RefApprovalItem approve(Long id, RefApprovalDecisionRequest request) {
         return transit(id, "APPROVED", "최승인", request == null ? null : request.comment());
     }
 
+    @Transactional
     public RefApprovalItem reject(Long id, RefApprovalDecisionRequest request) {
         return transit(id, "REJECTED", "최승인", request == null ? null : request.comment());
     }
@@ -76,22 +85,110 @@ public class RefApprovalService {
         String fromStatus = current.status();
         LocalDateTime now = LocalDateTime.now();
 
-        List<RefApprovalHistoryItem> history = new ArrayList<>(current.history());
-        history.add(new RefApprovalHistoryItem(fromStatus, toStatus, actor, comment, now));
-
-        RefApprovalItem updated = new RefApprovalItem(
-            current.id(),
-            current.title(),
-            current.requesterName(),
-            current.requesterTeam(),
-            current.requestType(),
-            current.summary(),
+        int updated = jdbcTemplate.update(
+            """
+            UPDATE gov_access_request
+            SET status = ?,
+                decided_at = ?
+            WHERE id = ?
+            """,
             toStatus,
-            current.submittedAt(),
-            now,
-            history
+            Timestamp.valueOf(now),
+            id
         );
-        store.put(id, updated);
-        return updated;
+        if (updated == 0) {
+            throw BusinessException.notFound("Reference approval not found: " + id);
+        }
+
+        jdbcTemplate.update(
+            """
+            INSERT INTO gov_access_request_history (
+                request_id,
+                from_status,
+                to_status,
+                actor_name,
+                comment,
+                occurred_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            id,
+            fromStatus,
+            toStatus,
+            actor,
+            comment,
+            Timestamp.valueOf(now)
+        );
+
+        return findById(id);
+    }
+
+    private RefApprovalItem toItem(ApprovalRow row) {
+        return new RefApprovalItem(
+            row.id(),
+            row.title(),
+            row.requesterName(),
+            row.requesterTeam(),
+            row.requestType(),
+            row.summary(),
+            row.status(),
+            row.submittedAt(),
+            row.decidedAt(),
+            findHistory(row.id())
+        );
+    }
+
+    private List<RefApprovalHistoryItem> findHistory(Long requestId) {
+        return jdbcTemplate.query(
+            """
+            SELECT from_status,
+                   to_status,
+                   actor_name,
+                   comment,
+                   occurred_at
+            FROM gov_access_request_history
+            WHERE request_id = ?
+            ORDER BY occurred_at ASC, id ASC
+            """,
+            (rs, rowNum) -> new RefApprovalHistoryItem(
+                rs.getString("from_status"),
+                rs.getString("to_status"),
+                rs.getString("actor_name"),
+                rs.getString("comment"),
+                toLocalDateTime(rs.getTimestamp("occurred_at"))
+            ),
+            requestId
+        );
+    }
+
+    private ApprovalRow mapApprovalRow(ResultSet rs, int rowNum) throws SQLException {
+        return new ApprovalRow(
+            rs.getLong("id"),
+            rs.getString("request_title"),
+            rs.getString("requester_name"),
+            rs.getString("requester_team"),
+            rs.getString("request_type"),
+            rs.getString("summary"),
+            rs.getString("status"),
+            toLocalDateTime(rs.getTimestamp("submitted_at")),
+            toLocalDateTime(rs.getTimestamp("decided_at"))
+        );
+    }
+
+    private LocalDateTime toLocalDateTime(Timestamp timestamp) {
+        return timestamp == null ? null : timestamp.toLocalDateTime();
+    }
+
+    private record ApprovalRow(
+        Long id,
+        String title,
+        String requesterName,
+        String requesterTeam,
+        String requestType,
+        String summary,
+        String status,
+        LocalDateTime submittedAt,
+        LocalDateTime decidedAt
+    ) {
     }
 }

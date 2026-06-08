@@ -2,16 +2,27 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import useVuelidate from "@vuelidate/core";
 import { ElDialog, ElForm, ElFormItem, ElMessage, ElMessageBox } from "element-plus";
-import { Delete, Edit, Plus, Search } from "@element-plus/icons-vue";
+import { Delete, Download, Edit, Plus, Search, Upload } from "@element-plus/icons-vue";
 import AuthButton from "@/shared/components/auth/AuthButton.vue";
 import { PortalTextInput, PortalTextarea } from "@/shared/components/tags";
 import BaseGrid from "@/shared/components/grid/BaseGrid.vue";
 import SearchPanel from "@/shared/components/search/SearchPanel.vue";
 import GridPageLayout from "@/components/GridPageLayout.vue";
-import { handleApiError, isUserCancel } from "@/shared/api/error-handler";
+import { handleApiError } from "@/shared/api/error-handler";
+import { confirmDelete, confirmSave, confirmUpdate } from "@/shared/feedback/confirm-dialog";
 import type { ListRequest, ListSort } from "@/shared/types/list";
 import { fieldError, maxLengthText, requiredText } from "@/shared/validation/vuelidate";
-import { createSample, deleteSample, fetchList, updateSample } from "../api";
+import {
+  createSample,
+  deleteSample,
+  downloadExcel as downloadSampleJpaExcel,
+  downloadLargeExcel,
+  fetchLargeExcel,
+  fetchList,
+  requestLargeExcel,
+  updateSample,
+  uploadExcel,
+} from "../api";
 import { columns as gridColumns } from "../columns";
 import type { SampleListJpaItem, SampleListJpaSearchFilter } from "../types";
 
@@ -23,10 +34,14 @@ type SampleJpaForm = {
 const rows = ref<SampleListJpaItem[]>([]);
 const loading = ref(false);
 const saving = ref(false);
+const downloading = ref(false);
+const requestingLargeDownload = ref(false);
+const uploading = ref(false);
 const totalCount = ref(0);
 const selectedRow = ref<SampleListJpaItem | null>(null);
 const dialogVisible = ref(false);
 const dialogMode = ref<"create" | "update">("create");
+const uploadInput = ref<HTMLInputElement | null>(null);
 
 const request = reactive<ListRequest<SampleListJpaSearchFilter>>({
   pageNo: 1,
@@ -43,6 +58,19 @@ const form = reactive<SampleJpaForm>({
 });
 
 const columns = computed(() => gridColumns);
+const pinnedBottomRows = computed<SampleListJpaItem[]>(() => {
+  const pageRowCount = rows.value.length;
+  const describedRowCount = rows.value.filter((row) => row.description?.trim()).length;
+  const emptyDescriptionCount = pageRowCount - describedRowCount;
+
+  return [
+    {
+      id: 0,
+      name: `현재 페이지 ${pageRowCount.toLocaleString()}건 / 전체 ${totalCount.value.toLocaleString()}건`,
+      description: `설명 입력 ${describedRowCount.toLocaleString()}건 / 설명 미입력 ${emptyDescriptionCount.toLocaleString()}건 / 선택 ${selectedRow.value ? "1" : "0"}건`,
+    },
+  ];
+});
 const dialogTitle = computed(() => (dialogMode.value === "create" ? "JPA 샘플 등록" : "JPA 샘플 수정"));
 const rules = computed(() => ({
   name: {
@@ -136,6 +164,13 @@ async function save() {
     return;
   }
 
+  const confirmed = dialogMode.value === "create"
+    ? await confirmSave("JPA 샘플을 등록하시겠습니까?")
+    : await confirmUpdate("JPA 샘플을 수정하시겠습니까?");
+  if (!confirmed) {
+    return;
+  }
+
   saving.value = true;
   try {
     const payload = {
@@ -166,23 +201,113 @@ async function remove() {
     return;
   }
 
-  try {
-    await ElMessageBox.confirm("선택한 JPA 샘플을 삭제하시겠습니까?", "삭제 확인", {
-      confirmButtonText: "삭제",
-      cancelButtonText: "취소",
-      type: "warning",
-    });
+  const confirmed = await confirmDelete("선택한 JPA 샘플을 삭제하시겠습니까?");
+  if (!confirmed) {
+    return;
+  }
 
+  try {
     await deleteSample(selectedRow.value.id);
     selectedRow.value = null;
     ElMessage.success("삭제되었습니다.");
     void load();
   } catch (error) {
-    if (isUserCancel(error)) {
-      return;
-    }
     handleApiError(error, "삭제에 실패했습니다.");
   }
+}
+
+async function downloadExcelFile() {
+  downloading.value = true;
+  try {
+    await downloadSampleJpaExcel(request);
+    ElMessage.success("엑셀 다운로드를 시작했습니다.");
+  } catch (error) {
+    handleApiError(error, "엑셀 다운로드에 실패했습니다.");
+  } finally {
+    downloading.value = false;
+  }
+}
+
+async function requestLargeDownloadFile() {
+  requestingLargeDownload.value = true;
+  try {
+    const requested = await requestLargeExcel(request);
+    ElMessage.info(`대용량 엑셀 생성 요청을 등록했습니다. 대상 ${requested.totalRows.toLocaleString()}건`);
+
+    const completed = await waitLargeDownload(requested.jobId);
+    if (completed.downloadUrl) {
+      await downloadLargeExcel(completed.jobId);
+      ElMessage.success("대용량 엑셀 다운로드를 시작했습니다.");
+    }
+  } catch (error) {
+    handleApiError(error, "대용량 엑셀 다운로드에 실패했습니다.");
+  } finally {
+    requestingLargeDownload.value = false;
+  }
+}
+
+function openExcelUpload() {
+  uploadInput.value?.click();
+}
+
+async function onExcelFileChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = "";
+
+  if (!file) {
+    return;
+  }
+
+  uploading.value = true;
+  try {
+    const result = await uploadExcel(file);
+    if (result.errorRows > 0) {
+      await ElMessageBox.alert(importErrorMessage(result), "엑셀 업로드 검증 결과", {
+        confirmButtonText: "확인",
+        type: "warning",
+      });
+      return;
+    }
+
+    ElMessage.success(`엑셀 업로드가 완료되었습니다. 반영 ${result.successRows.toLocaleString()}건`);
+    void load();
+  } catch (error) {
+    handleApiError(error, "엑셀 업로드에 실패했습니다.");
+  } finally {
+    uploading.value = false;
+  }
+}
+
+async function waitLargeDownload(jobId: string) {
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const job = await fetchLargeExcel(jobId);
+    if (job.status === "COMPLETED") {
+      return job;
+    }
+    if (job.status === "FAILED") {
+      throw new Error(job.message || "Large Excel export failed.");
+    }
+    await delay(1000);
+  }
+
+  throw new Error("Large Excel export timed out.");
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function importErrorMessage(result: { totalRows: number; errorRows: number; errors: { rowIndex: number; column: string; message: string }[] }) {
+  const lines = result.errors
+    .slice(0, 10)
+    .map((error) => `- ${error.rowIndex}행 / ${error.column}: ${error.message}`);
+  const suffix = result.errors.length > 10 ? `\n외 ${result.errors.length - 10}건` : "";
+
+  return [
+    `전체 ${result.totalRows.toLocaleString()}건 중 오류 ${result.errorRows.toLocaleString()}건이 있어 반영하지 않았습니다.`,
+    ...lines,
+  ].join("\n") + suffix;
 }
 
 onMounted(load);
@@ -203,6 +328,21 @@ onMounted(load);
         <template #actions>
           <AuthButton auth="SAMPLE_JPA_READ" @click="reset">초기화</AuthButton>
           <AuthButton auth="SAMPLE_JPA_READ" type="primary" :icon="Search" @click="search">조회</AuthButton>
+          <AuthButton auth="SAMPLE_JPA_EXPORT" type="info" :icon="Download" :disabled="downloading" @click="downloadExcelFile">
+            엑셀 다운로드
+          </AuthButton>
+          <AuthButton
+            auth="SAMPLE_JPA_EXPORT"
+            type="info"
+            :icon="Download"
+            :disabled="requestingLargeDownload"
+            @click="requestLargeDownloadFile"
+          >
+            대용량 다운로드
+          </AuthButton>
+          <AuthButton auth="SAMPLE_JPA_IMPORT" type="success" :icon="Upload" :disabled="uploading" @click="openExcelUpload">
+            엑셀 업로드
+          </AuthButton>
           <AuthButton auth="SAMPLE_JPA_CREATE" type="success" :icon="Plus" @click="openCreateDialog">등록</AuthButton>
           <AuthButton
             auth="SAMPLE_JPA_UPDATE"
@@ -222,11 +362,13 @@ onMounted(load);
           <span v-if="selectedRow" class="ml-2 text-slate-400">선택: {{ selectedRow.name }}</span>
         </template>
       </SearchPanel>
+      <input ref="uploadInput" class="hidden" type="file" accept=".xlsx" @change="onExcelFileChange" />
     </template>
 
     <BaseGrid
       :rows="rows"
       :columns="columns"
+      :pinned-bottom-rows="pinnedBottomRows"
       :loading="loading"
       :total-count="totalCount"
       :page-no="request.pageNo"

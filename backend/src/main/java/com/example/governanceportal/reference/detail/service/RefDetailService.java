@@ -2,31 +2,79 @@ package com.example.governanceportal.reference.detail.service;
 
 import com.example.governanceportal.common.error.BusinessException;
 import com.example.governanceportal.reference.detail.dto.RefDetailItem;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
-import org.springframework.cache.annotation.Cacheable;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
 public class RefDetailService {
 
-    private static final List<RefDetailItem> ITEMS = List.of(
-        new RefDetailItem(1L, "고객 등급 마스터", "MD-001", "기준정보", "데이터관리팀", "고객 등급 정의 및 기준 관리", "ACTIVE", LocalDateTime.of(2026, 1, 15, 10, 30)),
-        new RefDetailItem(2L, "상품 분류 코드", "MD-002", "기준정보", "상품기획팀", "상품 카테고리 분류 체계", "ACTIVE", LocalDateTime.of(2026, 2, 3, 14, 12)),
-        new RefDetailItem(3L, "거래 유형 정의", "MD-003", "기준정보", "리스크관리팀", "거래 분류 및 위험도 기준", "ARCHIVED", LocalDateTime.of(2026, 2, 18, 9, 5)),
-        new RefDetailItem(4L, "지점 마스터", "MD-004", "조직", "운영지원팀", "지점 코드 및 관할 정보", "ACTIVE", LocalDateTime.of(2026, 3, 1, 11, 0))
-    );
+    private final JdbcTemplate jdbcTemplate;
 
-    @Cacheable(cacheNames = "referenceDetails", key = "'all'")
-    public List<RefDetailItem> findAll() {
-        return ITEMS;
+    public RefDetailService(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
     }
 
-    @Cacheable(cacheNames = "referenceDetail", key = "#id")
+    public List<RefDetailItem> findAll() {
+        return jdbcTemplate.query(
+            """
+            SELECT id,
+                   asset_name,
+                   asset_id,
+                   asset_stage,
+                   owner_name,
+                   description,
+                   lifecycle_status,
+                   created_at
+            FROM gov_asset_catalog
+            ORDER BY updated_at DESC, id DESC
+            """,
+            this::mapItem
+        );
+    }
+
     public RefDetailItem findById(Long id) {
-        return ITEMS.stream()
-            .filter(item -> item.id().equals(id))
-            .findFirst()
-            .orElseThrow(() -> BusinessException.notFound("Reference detail not found: " + id));
+        try {
+            return jdbcTemplate.queryForObject(
+                """
+                SELECT id,
+                       asset_name,
+                       asset_id,
+                       asset_stage,
+                       owner_name,
+                       description,
+                       lifecycle_status,
+                       created_at
+                FROM gov_asset_catalog
+                WHERE id = ?
+                """,
+                this::mapItem,
+                id
+            );
+        } catch (EmptyResultDataAccessException error) {
+            throw BusinessException.notFound("Reference detail not found: " + id);
+        }
+    }
+
+    private RefDetailItem mapItem(ResultSet rs, int rowNum) throws SQLException {
+        return new RefDetailItem(
+            rs.getLong("id"),
+            rs.getString("asset_name"),
+            rs.getString("asset_id"),
+            rs.getString("asset_stage"),
+            rs.getString("owner_name"),
+            rs.getString("description"),
+            rs.getString("lifecycle_status"),
+            toLocalDateTime(rs.getTimestamp("created_at"))
+        );
+    }
+
+    private LocalDateTime toLocalDateTime(Timestamp timestamp) {
+        return timestamp == null ? null : timestamp.toLocalDateTime();
     }
 }

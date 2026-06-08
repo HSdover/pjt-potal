@@ -1,0 +1,48 @@
+APP_NAME = Governance Portal Git
+RUN_USER = git
+WORK_PATH = /var/lib/gitea
+
+[server]
+DOMAIN = git.company.local
+ROOT_URL = https://git.company.local/
+PROTOCOL = http
+HTTP_ADDR = 127.0.0.1
+HTTP_PORT = 3000
+DISABLE_SSH = false
+START_SSH_SERVER = true
+SSH_DOMAIN = git.company.local
+SSH_PORT = 2222
+SSH_LISTEN_PORT = 2222
+BUILTIN_SSH_SERVER_USER = git
+LFS_START_SERVER = true
+LFS_JWT_SECRET = CHANGE_ME_GENERATE_WITH_GITEA
+
+[database]
+DB_TYPE = sqlite3
+PATH = /var/lib/gitea/data/gitea.db
+
+[repository]
+ROOT = /data/gitea/repositories
+DEFAULT_BRANCH = main
+
+[security]
+INSTALL_LOCK = true
+SECRET_KEY = CHANGE_ME_GENERATE_WITH_GITEA
+INTERNAL_TOKEN = CHANGE_ME_GENERATE_WITH_GITEA
+PASSWORD_HASH_ALGO = pbkdf2
+
+[service]
+DISABLE_REGISTRATION = true
+REQUIRE_SIGNIN_VIEW = true
+REGISTER_EMAIL_CONFIRM = false
+
+[session]
+PROVIDER = file
+
+[log]
+MODE = file
+LEVEL = Info
+ROOT_PATH = /var/lib/gitea/log
+
+[cron.update_checker]
+ENABLED = false

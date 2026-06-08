@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import useVuelidate from "@vuelidate/core";
-import { ElDialog, ElForm, ElFormItem, ElMessage, ElMessageBox } from "element-plus";
+import { ElDialog, ElForm, ElFormItem, ElMessage } from "element-plus";
 import { Delete, Edit, Plus, Search } from "@element-plus/icons-vue";
 import AuthButton from "@/shared/components/auth/AuthButton.vue";
 import { PortalTextInput, PortalTextarea } from "@/shared/components/tags";
 import BaseGrid from "@/shared/components/grid/BaseGrid.vue";
 import SearchPanel from "@/shared/components/search/SearchPanel.vue";
 import GridPageLayout from "@/components/GridPageLayout.vue";
-import { handleApiError, isUserCancel } from "@/shared/api/error-handler";
+import { handleApiError } from "@/shared/api/error-handler";
+import { confirmDelete, confirmSave, confirmUpdate } from "@/shared/feedback/confirm-dialog";
 import type { ListRequest, ListSort } from "@/shared/types/list";
 import { fieldError, maxLengthText, requiredText } from "@/shared/validation/vuelidate";
 import { createSample, deleteSample, fetchList, updateSample } from "../api";
@@ -136,6 +137,13 @@ async function save() {
     return;
   }
 
+  const confirmed = dialogMode.value === "create"
+    ? await confirmSave("샘플을 등록하시겠습니까?")
+    : await confirmUpdate("샘플을 수정하시겠습니까?");
+  if (!confirmed) {
+    return;
+  }
+
   saving.value = true;
   try {
     const payload = {
@@ -166,21 +174,17 @@ async function remove() {
     return;
   }
 
-  try {
-    await ElMessageBox.confirm("선택한 샘플을 삭제하시겠습니까?", "삭제 확인", {
-      confirmButtonText: "삭제",
-      cancelButtonText: "취소",
-      type: "warning",
-    });
+  const confirmed = await confirmDelete("선택한 샘플을 삭제하시겠습니까?");
+  if (!confirmed) {
+    return;
+  }
 
+  try {
     await deleteSample(selectedRow.value.id);
     selectedRow.value = null;
     ElMessage.success("삭제되었습니다.");
     void load();
   } catch (error) {
-    if (isUserCancel(error)) {
-      return;
-    }
     handleApiError(error, "삭제에 실패했습니다.");
   }
 }

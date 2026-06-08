@@ -9,20 +9,20 @@ const pageSize = defineModel<number>("pageSize", { default: 10 });
 const props = withDefaults(defineProps<{
   total: number;
   pageSizeOptions?: number[];
+  visiblePageCount?: number;
 }>(), {
   pageSizeOptions: () => [10, 20, 50],
+  visiblePageCount: 10,
 });
 
-const pageCount = computed(() => Math.max(1, Math.ceil(props.total / pageSize.value)));
-// 첫 페이지, 마지막 페이지, 현재 페이지 주변만 노출해 긴 페이지 목록을 단순화한다.
+const pageCount = computed(() => Math.max(1, Math.ceil(props.total / Math.max(1, pageSize.value))));
+const normalizedCurrentPage = computed(() => Math.min(Math.max(currentPage.value, 1), pageCount.value));
+const pageBlockSize = computed(() => Math.max(1, props.visiblePageCount));
+// 현재 페이지가 속한 페이지 블록을 노출한다. 기본값은 1~10, 11~20 형식이다.
 const visiblePages = computed(() => {
-  const pages = new Set<number>([1, pageCount.value, currentPage.value]);
-  for (let page = currentPage.value - 1; page <= currentPage.value + 1; page += 1) {
-    if (page >= 1 && page <= pageCount.value) {
-      pages.add(page);
-    }
-  }
-  return Array.from(pages).sort((left, right) => left - right);
+  const blockStart = Math.floor((normalizedCurrentPage.value - 1) / pageBlockSize.value) * pageBlockSize.value + 1;
+  const blockEnd = Math.min(blockStart + pageBlockSize.value - 1, pageCount.value);
+  return Array.from({ length: blockEnd - blockStart + 1 }, (_, index) => blockStart + index);
 });
 
 // 범위 밖 페이지 이동 요청은 1~pageCount 사이로 보정한다.
@@ -46,7 +46,7 @@ function changePageSize(event: Event) {
       v-for="page in visiblePages"
       :key="page"
       type="button"
-      :class="{ active: page === currentPage }"
+      :class="{ active: page === normalizedCurrentPage }"
       @click="move(page)"
     >
       {{ page }}

@@ -5,7 +5,7 @@
 ## 기술 구조
 
 - Frontend: Vue 3, TypeScript, Vite, Element Plus, AG Grid, Vuelidate, ESLint
-- Backend: Java 21, Spring Boot 3.3, embedded Tomcat, Spring Security SAML2, Spring Batch, JPA/MyBatis/QueryDSL
+- Backend: Java 21, Spring Boot 3.3, embedded Tomcat, Spring Security SAML2, Spring Batch, JPA/MyBatis/QueryDSL, EasyExcel
 - DB/Cache: H2 local DB, Oracle JDBC(ojdbc11), Redis cache
 - Integration: RestClient + HTTP Interface 기반 외부 REST API 공통 클라이언트
 - 운영 Web: Nginx
@@ -44,7 +44,7 @@ cd backend
 .\gradlew.bat bootRun
 ```
 
-기본 포트는 `18080`입니다.
+기본 포트는 `18080`입니다. 별도 프로파일을 지정하지 않으면 `local` 프로파일이 기본으로 적용되어 H2 로컬 DB를 사용합니다.
 
 ### IDE main 실행 시 프론트도 함께 실행
 
@@ -72,7 +72,7 @@ Active profiles: local
 SPRING_PROFILES_ACTIVE=local
 ```
 
-`local` 프로파일은 백엔드 시작 시 `frontend` 또는 `../frontend`에서 기존 5173 프론트 서버를 종료하고, `npm.cmd run build`를 실행한 뒤 `npm.cmd run dev`를 다시 실행합니다.
+`local` 프로파일은 H2 로컬 DB와 simple cache를 사용하고, 백엔드 시작 시 `frontend` 또는 `../frontend`에서 기존 5173 프론트 서버를 종료한 뒤 `npm.cmd run build`, `npm.cmd run dev`를 실행합니다.
 
 운영 JAR에서는 기본값이 꺼져 있습니다.
 
@@ -112,6 +112,8 @@ spec 파일은 `tools/generator/pages/{name}.json`에 둡니다.
 
 ## 운영 빌드
 
+인터넷 가능한 개발/빌드 PC에서는 일반 빌드를 사용합니다.
+
 ```powershell
 .\scripts\build-production.ps1
 ```
@@ -129,11 +131,14 @@ spec 파일은 `tools/generator/pages/{name}.json`에 둡니다.
   governance-portal-backend.jar          # Spring Boot API 실행 JAR
 ```
 
-Nginx 설정 예시는 `infra/nginx/governance-portal.conf`에 있습니다.
+Nginx 설정 예시는 `infra/nginx/governance-portal.conf`에 있습니다. SAML 운영용 HTTPS 템플릿은 `infra/nginx/governance-portal-https.conf`를 사용합니다.
 systemd 서비스 예시는 `infra/systemd/governance-portal.service`에 있습니다.
 운영 env 템플릿은 `infra/env/governance-portal.env.template`에 있습니다.
+엑셀 업로드를 위해 Nginx 템플릿은 `client_max_body_size 25m`, Spring Boot는 `GOVERNANCE_MULTIPART_MAX_FILE_SIZE=20MB`, `GOVERNANCE_MULTIPART_MAX_REQUEST_SIZE=25MB`를 기준으로 합니다.
 
 운영 Nginx는 `X-Request-Id`를 백엔드로 전달합니다. 백엔드는 같은 값을 MDC 로그와 응답 헤더에 남기므로 장애 대응 시 Nginx access log, Spring Boot 로그, 외부 API 로그를 같은 requestId로 조회합니다.
+
+내부망처럼 인터넷 접근이 막힌 PC에서 빌드해야 하면 `build-production.ps1` 대신 오프라인 빌드 절차를 사용합니다. 먼저 인터넷 가능한 PC에서 `prepare-offline-bundle.ps1`로 `offline/` 캐시를 준비하고, 내부망 PC에서는 `build-offline-jar.ps1`을 실행합니다. 상세 절차는 `docs/offline_build_guide.txt`를 기준으로 합니다.
 
 ## 주요 URL
 
@@ -145,21 +150,80 @@ systemd 서비스 예시는 `infra/systemd/governance-portal.service`에 있습�
 | http://localhost:18080/swagger-ui.html | Swagger UI |
 | http://localhost:18080/actuator/health | 헬스 체크 |
 
+로컬 로그인 계정:
+
+| ID | Password | 설명 |
+| --- | --- | --- |
+| `local-dev` | `local1234!` | 로컬 개발용 전체 권한 |
+| `local-admin` | `local1234!` | 로컬 관리자 테스트 |
+
 H2 콘솔 접속 정보:
 
-- JDBC URL: `jdbc:h2:mem:governance`
+- JDBC URL: `jdbc:h2:mem:governance;MODE=Oracle;DB_CLOSE_DELAY=-1`
 - User Name: `sa`
 - Password: 없음
 
+## 인증/권한
+
+- 로컬 개발은 `local` 프로파일의 임시 로그인 계정을 사용합니다.
+- IAM/KNOX 연동 환경은 `saml` 프로파일을 함께 사용합니다.
+- IAM에서 내려오는 기본 역할은 `관리자`, `AI 에이전트관리자`, `데이터 관리자`입니다.
+- 권한관리 화면은 `시스템 관리 > 권한관리`에 있으며 `PERMISSION_MANAGE` 권한이 필요합니다.
+- 권한 데이터는 `portal_permission`, `portal_iam_role`, `portal_permission_assignment` 테이블로 관리합니다.
+- 프론트 메뉴/버튼은 권한 기준으로 숨기고, 백엔드 API는 `@PreAuthorize`와 `SecurityConfig`로 서버단 권한을 검사합니다.
+
+상세 구조와 로컬 권한 제한 테스트 방법은 `docs/permission-management-guide.md`를 기준으로 합니다.
+
+## DB 프로파일
+
+| 프로파일 | 용도 | DB 초기화 | 주요 env 템플릿 |
+| --- | --- | --- | --- |
+| `local` | 개인 PC 로컬 개발, H2 DB | `schema.sql`/`data.sql` 실행 | `infra/env/governance-portal.local.env.template` |
+| `dev` | 개발서버 실제 Oracle/ADB DB | 자동 초기화 안 함 | `infra/env/governance-portal.dev.env.template` |
+| `prod` | 운영서버 실제 Oracle/ADB DB | 자동 초기화 안 함 | `infra/env/governance-portal.env.template` |
+
+실행 예:
+
+```powershell
+# 로컬 H2 DB
+$env:SPRING_PROFILES_ACTIVE="local"
+.\gradlew.bat bootRun
+
+# 개발서버 DB
+$env:SPRING_PROFILES_ACTIVE="saml,dev"
+$env:GOVERNANCE_DEV_DATASOURCE_URL="jdbc:oracle:thin:@//dev-db-host:1521/service"
+$env:GOVERNANCE_DEV_DATASOURCE_USERNAME="dev_appuser"
+$env:GOVERNANCE_DEV_DATASOURCE_PASSWORD="change-me"
+.\gradlew.bat bootRun
+
+# 운영서버 DB
+SPRING_PROFILES_ACTIVE=saml,prod
+GOVERNANCE_PROD_DATASOURCE_URL=jdbc:oracle:thin:@//prod-db-host:1521/service
+GOVERNANCE_PROD_DATASOURCE_USERNAME=appuser
+GOVERNANCE_PROD_DATASOURCE_PASSWORD=change-me
+```
+
+`dev`/`prod` 프로파일에서는 `schema.sql`과 `data.sql`을 실행하지 않습니다. 현재 로컬 샘플 스키마는 `DROP TABLE`을 포함하므로 실제 개발/운영 DB에는 DBA 또는 마이그레이션 절차로 테이블을 준비해야 합니다.
+
 ## 환경 변수
 
+- `SERVER_ADDRESS`: 백엔드 bind address. 기본값은 `0.0.0.0`, 운영은 `127.0.0.1` 권장.
 - `SERVER_PORT`: 백엔드 HTTP 포트. 기본값은 `18080`.
-- `GOVERNANCE_DATASOURCE_URL`: DB JDBC URL. 기본값은 H2 in-memory.
-- `GOVERNANCE_DATASOURCE_DRIVER`: DB JDBC 드라이버 클래스. 기본값은 `org.h2.Driver`.
-- `GOVERNANCE_DATASOURCE_USERNAME`: DB 계정.
-- `GOVERNANCE_DATASOURCE_PASSWORD`: DB 비밀번호.
-- `GOVERNANCE_SQL_INIT_MODE`: SQL 초기화 모드. 기본값은 `embedded`.
-- `GOVERNANCE_H2_CONSOLE_ENABLED`: H2 console 사용 여부. 기본값은 `true`.
+- `GOVERNANCE_LOCAL_DATASOURCE_URL`: `local` 프로파일 DB JDBC URL. 기본값은 H2 in-memory.
+- `GOVERNANCE_DEV_DATASOURCE_URL`: `dev` 프로파일 DB JDBC URL.
+- `GOVERNANCE_PROD_DATASOURCE_URL`: `prod` 프로파일 DB JDBC URL.
+- `GOVERNANCE_DATASOURCE_URL`: 공통 DB JDBC URL. `DEV/PROD/LOCAL` 전용 값이 없을 때 fallback으로 사용합니다.
+- `GOVERNANCE_*_DATASOURCE_DRIVER`: 프로파일별 DB 드라이버 클래스. Oracle 기본값은 `oracle.jdbc.OracleDriver`.
+- `GOVERNANCE_*_DATASOURCE_USERNAME`: 프로파일별 DB 계정.
+- `GOVERNANCE_*_DATASOURCE_PASSWORD`: 프로파일별 DB 비밀번호.
+- `GOVERNANCE_SQL_INIT_MODE`: SQL 초기화 모드. `local` 기본값은 `embedded`, `dev/prod` 기본값은 `never`.
+- `GOVERNANCE_H2_CONSOLE_ENABLED`: H2 console 사용 여부. `local` 기본값은 `true`, 그 외 기본값은 `false`.
+- `GOVERNANCE_DATASOURCE_MAX_POOL_SIZE`: Hikari connection pool 최대 크기.
+- `GOVERNANCE_DATASOURCE_MIN_IDLE`: Hikari connection pool 최소 idle 수.
+- `GOVERNANCE_DATASOURCE_CONNECTION_TIMEOUT`: Hikari connection 획득 timeout(ms).
+- `GOVERNANCE_MULTIPART_MAX_FILE_SIZE`: Excel 등 multipart 단일 파일 최대 크기. 기본값은 `20MB`.
+- `GOVERNANCE_MULTIPART_MAX_REQUEST_SIZE`: multipart 요청 전체 최대 크기. 기본값은 `25MB`.
+- `GOVERNANCE_ATTACHMENT_STORAGE_ROOT`: 첨부파일 저장 루트. 미지정 시 Java 임시 디렉터리 아래 `governance-portal/attachments`를 사용합니다.
 - `GOVERNANCE_CACHE_TYPE`: Spring cache 구현. 기본값은 `redis`. 로컬에서 Redis 없이 실행할 때는 `local` profile의 기본값 `simple`을 사용합니다.
 - `GOVERNANCE_CACHE_REDIS_TTL`: Redis cache TTL. 기본값은 `300s`.
 - `GOVERNANCE_CACHE_REDIS_KEY_PREFIX`: Redis cache key prefix. 기본값은 `governance:`.
@@ -182,15 +246,16 @@ H2 콘솔 접속 정보:
 - `GOVERNANCE_FRONTEND_DEV_SERVER_BUILD_ARGS`: 프론트 빌드 인자. 기본값은 `run,build`.
 - `VITE_API_PROXY_TARGET`: 프론트 개발 서버의 `/api` 프록시 대상. 기본값은 `http://127.0.0.1:18080`.
 
-Oracle DB 사용 시에는 런타임에 `ojdbc11` 드라이버가 포함됩니다. 운영 환경에서는 아래처럼 datasource 값을 외부 환경변수 또는 env 파일로 주입합니다.
+Oracle DB 사용 시에는 런타임에 `ojdbc11` 드라이버가 포함됩니다. 개발/운영 환경에서는 프로파일에 맞는 datasource 값을 외부 환경변수 또는 env 파일로 주입합니다.
 
 ```bash
-GOVERNANCE_DATASOURCE_URL=jdbc:oracle:thin:@//db-host:1521/service
-GOVERNANCE_DATASOURCE_DRIVER=oracle.jdbc.OracleDriver
-GOVERNANCE_DATASOURCE_USERNAME=appuser
-GOVERNANCE_DATASOURCE_PASSWORD=change-me
+SPRING_PROFILES_ACTIVE=saml,prod
+GOVERNANCE_PROD_DATASOURCE_URL=jdbc:oracle:thin:@//db-host:1521/service
+GOVERNANCE_PROD_DATASOURCE_DRIVER=oracle.jdbc.OracleDriver
+GOVERNANCE_PROD_DATASOURCE_USERNAME=appuser
+GOVERNANCE_PROD_DATASOURCE_PASSWORD=change-me
 GOVERNANCE_SQL_INIT_MODE=never
-GOVERNANCE_H2_CONSOLE_ENABLED=false
+GOVERNANCE_BATCH_SCHEMA_INITIALIZE=never
 ```
 
 Oracle Autonomous Database처럼 Wallet 기반 접속이 필요하면 Wallet 파일 위치와 추가 보안 companion JAR 필요 여부를 DBA/OCI 담당자와 확인합니다.
@@ -216,6 +281,7 @@ Oracle Autonomous Database처럼 Wallet 기반 접속이 필요하면 Wallet 파
 ```
 
 이 단계는 npm/Gradle 의존성을 캐시에 내려받은 뒤, 같은 캐시로 오프라인 빌드가 가능한지 한 번 더 검증합니다.
+EasyExcel처럼 Gradle 의존성이 추가되면 내부망 반입 전 반드시 이 단계를 다시 실행해야 합니다.
 
 프로젝트 전체를 내부망으로 옮긴 뒤 실행합니다.
 
@@ -231,6 +297,9 @@ Oracle Autonomous Database처럼 Wallet 기반 접속이 필요하면 Wallet 파
 - `docs/frontend/`: 프론트엔드 로컬 개발 온보딩과 화면 작성 기준
 - `docs/governance/screen-domain-template.md`: 기능목록 엑셀 기준 화면 도메인/템플릿 분류
 - `docs/governance/project-start-strategy.md`: 프로젝트 투입 후 내부망 형상관리와 Oracle Linux 운영 배포 전략
+- `docs/permission-management-guide.md`: IAM/AD 연동 권한관리 화면, DB, 서버단 권한 검증 기준
+- `docs/excel-attachment-feature-guide.md`: 엑셀 다운로드/업로드와 첨부파일 처리 흐름
+- `docs/frontend/06-eslint-guide.md`: ESLint 역할과 VSCode 설정 기준
 - `docs/deployment_nginx_springboot.txt`: Nginx + Spring Boot JAR 운영 구성
 - `docs/offline_build_guide.txt`: 내부망 오프라인 빌드 절차
 - `개선사항/작업방향.md`: 현재 문서/작업 정리 기준

@@ -2,12 +2,14 @@ package com.example.governanceportal.reference.dashboard.api;
 
 import com.example.governanceportal.reference.dashboard.dto.RefDashboardData;
 import com.example.governanceportal.reference.dashboard.service.RefDashboardService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/reference/dashboards")
+@PreAuthorize("@portalPermissionService.hasPermission(authentication, 'REF_VIEW')")
 public class RefDashboardController {
 
     private final RefDashboardService refDashboardService;

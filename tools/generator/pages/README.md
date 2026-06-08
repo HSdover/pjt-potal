@@ -39,7 +39,7 @@ tools\generator\generate-feature.cmd --backend-only
 ## 필드
 
 - `feature`: 프론트엔드 feature 폴더명입니다. kebab-case를 사용합니다.
-- `type`: 현재는 `search-grid`만 지원합니다.
+- `type`: `search-grid`, `integrated-meta-grid`를 지원합니다.
 - `title`: 화면 제목입니다.
 - `description`: 화면 설명입니다.
 - `auth`: 라우트와 버튼에서 사용하는 권한 코드입니다.

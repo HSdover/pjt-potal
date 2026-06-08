@@ -1,19 +1,16 @@
 spring:
   application:
     name: governance-portal-backend
+  profiles:
+    default: local
   batch:
     job:
       enabled: ${GOVERNANCE_BATCH_JOB_ENABLED:false}
     jdbc:
-      initialize-schema: ${GOVERNANCE_BATCH_SCHEMA_INITIALIZE:embedded}
+      initialize-schema: ${GOVERNANCE_BATCH_SCHEMA_INITIALIZE:never}
   threads:
     virtual:
       enabled: true
-  datasource:
-    url: ${GOVERNANCE_DATASOURCE_URL:jdbc:h2:mem:governance;MODE=Oracle;DB_CLOSE_DELAY=-1}
-    driver-class-name: ${GOVERNANCE_DATASOURCE_DRIVER:org.h2.Driver}
-    username: ${GOVERNANCE_DATASOURCE_USERNAME:sa}
-    password: ${GOVERNANCE_DATASOURCE_PASSWORD:}
   data:
     redis:
       host: ${GOVERNANCE_REDIS_HOST:127.0.0.1}
@@ -25,7 +22,7 @@ spring:
         enabled: false
   sql:
     init:
-      mode: ${GOVERNANCE_SQL_INIT_MODE:embedded}
+      mode: ${GOVERNANCE_SQL_INIT_MODE:never}
   jpa:
     hibernate:
       ddl-auto: none
@@ -39,10 +36,15 @@ spring:
       use-key-prefix: true
   h2:
     console:
-      enabled: ${GOVERNANCE_H2_CONSOLE_ENABLED:true}
+      enabled: ${GOVERNANCE_H2_CONSOLE_ENABLED:false}
       path: /h2-console
+  servlet:
+    multipart:
+      max-file-size: ${GOVERNANCE_MULTIPART_MAX_FILE_SIZE:20MB}
+      max-request-size: ${GOVERNANCE_MULTIPART_MAX_REQUEST_SIZE:25MB}
 
 server:
+  address: ${SERVER_ADDRESS:0.0.0.0}
   port: ${SERVER_PORT:18080}
   forward-headers-strategy: framework
 
@@ -66,12 +68,16 @@ logging:
     level: "%5p [requestId:%X{requestId:-}]"
 
 app:
+  attachment:
+    storage-root: ${GOVERNANCE_ATTACHMENT_STORAGE_ROOT:}
   auth:
     local-dev-user:
       enabled: ${GOVERNANCE_AUTH_LOCAL_DEV_USER_ENABLED:false}
       user-id: ${GOVERNANCE_AUTH_LOCAL_DEV_USER_ID:local-dev}
       display-name: ${GOVERNANCE_AUTH_LOCAL_DEV_USER_DISPLAY_NAME:Local Developer}
+      password: ${GOVERNANCE_AUTH_LOCAL_DEV_USER_PASSWORD:local1234!}
       permissions: []
+      users: []
     saml:
       direct-permission-attributes: []
       group-attributes:

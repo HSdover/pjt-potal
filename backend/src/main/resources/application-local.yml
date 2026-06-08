@@ -1,6 +1,21 @@
 spring:
+  batch:
+    jdbc:
+      initialize-schema: ${GOVERNANCE_BATCH_SCHEMA_INITIALIZE:embedded}
+  datasource:
+    url: ${GOVERNANCE_LOCAL_DATASOURCE_URL:${GOVERNANCE_DATASOURCE_URL:jdbc:h2:mem:governance;MODE=Oracle;DB_CLOSE_DELAY=-1}}
+    driver-class-name: ${GOVERNANCE_LOCAL_DATASOURCE_DRIVER:${GOVERNANCE_DATASOURCE_DRIVER:org.h2.Driver}}
+    username: ${GOVERNANCE_LOCAL_DATASOURCE_USERNAME:${GOVERNANCE_DATASOURCE_USERNAME:sa}}
+    password: ${GOVERNANCE_LOCAL_DATASOURCE_PASSWORD:${GOVERNANCE_DATASOURCE_PASSWORD:}}
+  sql:
+    init:
+      mode: ${GOVERNANCE_SQL_INIT_MODE:embedded}
   cache:
     type: ${GOVERNANCE_CACHE_TYPE:simple}
+  h2:
+    console:
+      enabled: ${GOVERNANCE_H2_CONSOLE_ENABLED:true}
+      path: /h2-console
 
 management:
   health:
@@ -13,8 +28,16 @@ app:
       enabled: true
       user-id: local-dev
       display-name: Local Developer
+      password: local1234!
       permissions:
         - DASHBOARD_READ
+        - META_VIEW
+        - PIPELINE_READ
+        - AI_AGENT_READ
+        - REQUEST_READ
+        - DP_VIEWER_READ
+        - NOTICE_READ
+        - PERMISSION_MANAGE
         - SAMPLE_READ
         - SAMPLE_CREATE
         - SAMPLE_UPDATE
@@ -23,8 +46,59 @@ app:
         - SAMPLE_JPA_CREATE
         - SAMPLE_JPA_UPDATE
         - SAMPLE_JPA_DELETE
+        - SAMPLE_JPA_EXPORT
+        - SAMPLE_JPA_IMPORT
         - REF_VIEW
         - BATCH_ADMIN
+      users:
+        - user-id: local-dev
+          display-name: Local Developer
+          password: local1234!
+          permissions:
+            - DASHBOARD_READ
+            - META_VIEW
+            - PIPELINE_READ
+            - AI_AGENT_READ
+            - REQUEST_READ
+            - DP_VIEWER_READ
+            - NOTICE_READ
+            - PERMISSION_MANAGE
+            - SAMPLE_READ
+            - SAMPLE_CREATE
+            - SAMPLE_UPDATE
+            - SAMPLE_DELETE
+            - SAMPLE_JPA_READ
+            - SAMPLE_JPA_CREATE
+            - SAMPLE_JPA_UPDATE
+            - SAMPLE_JPA_DELETE
+            - SAMPLE_JPA_EXPORT
+            - SAMPLE_JPA_IMPORT
+            - REF_VIEW
+            - BATCH_ADMIN
+        - user-id: local-admin
+          display-name: Local Admin
+          password: local1234!
+          permissions:
+            - DASHBOARD_READ
+            - META_VIEW
+            - PIPELINE_READ
+            - AI_AGENT_READ
+            - REQUEST_READ
+            - DP_VIEWER_READ
+            - NOTICE_READ
+            - PERMISSION_MANAGE
+            - SAMPLE_READ
+            - SAMPLE_CREATE
+            - SAMPLE_UPDATE
+            - SAMPLE_DELETE
+            - SAMPLE_JPA_READ
+            - SAMPLE_JPA_CREATE
+            - SAMPLE_JPA_UPDATE
+            - SAMPLE_JPA_DELETE
+            - SAMPLE_JPA_EXPORT
+            - SAMPLE_JPA_IMPORT
+            - REF_VIEW
+            - BATCH_ADMIN
   frontend-dev-server:
     enabled: true
     restart: true

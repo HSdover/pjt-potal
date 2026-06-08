@@ -17,6 +17,13 @@ npm run dev
 
 프론트 개발 서버는 `http://127.0.0.1:5173`을 사용한다. `/api` 요청은 기본값으로 `http://127.0.0.1:18080` 백엔드에 프록시된다.
 
+로컬 로그인 계정:
+
+| ID | Password | 비고 |
+|---|---|---|
+| `local-dev` | `local1234!` | 로컬 개발용 전체 권한 |
+| `local-admin` | `local1234!` | 권한관리 확인용 관리자 |
+
 ## 기본 구조
 
 ```text
@@ -68,7 +75,7 @@ tools/generator/generate-feature.cmd
 
 위 실행 파일은 `tools/generator/generator.config.json`의 `spec` 값을 읽는다.
 
-생성기는 `SearchGridPage` 유형만 지원한다. 생성 후에는 라우터에 화면을 등록하고 백엔드 API 경로를 실제 업무 API에 맞춘다.
+생성기는 `search-grid`, `integrated-meta-grid` 유형을 지원한다. `integrated-meta-grid`는 통합메타관리 메인 그리드 화면만 생성하며 메타상세 모달은 포함하지 않는다. 생성 후에는 라우터에 화면을 등록하고 백엔드 API 경로를 실제 업무 API에 맞춘다.
 
 ## 확인 기준
 

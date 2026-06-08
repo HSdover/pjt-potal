@@ -22,7 +22,7 @@
 
 1. 기능목록 기준 화면 도메인과 템플릿 유형 정리
 2. 개발 참고 화면을 재사용 가능한 템플릿/공통 컴포넌트로 유지
-3. 운영 투입 전 OCI Oracle Linux 배포 절차, 보안 파일, Redis/Oracle/SAML env 값을 현장 정보로 치환
+3. 운영 투입 전 OCI Oracle Linux 배포 절차, HTTPS Nginx 템플릿, 보안 파일, `SERVER_ADDRESS=127.0.0.1`, Redis/Oracle/SAML env 값을 현장 정보로 치환
 4. 프로젝트 착수 후 내부망 형상관리 전략 확정
 5. SAML SSO는 IAM/KNOX 연동 정보가 확정되면 `saml` 프로파일로 검증
 6. 외부 REST API는 시스템별 endpoint/인증/timeout이 확정되면 공통 `RestClient + HTTP Interface` 구조로 구현

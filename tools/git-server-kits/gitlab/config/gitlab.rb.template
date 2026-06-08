@@ -1,0 +1,13 @@
+external_url 'https://git.company.local'
+
+nginx['ssl_certificate'] = "/etc/gitlab/ssl/git.company.local.crt"
+nginx['ssl_certificate_key'] = "/etc/gitlab/ssl/git.company.local.key"
+
+gitlab_rails['gitlab_shell_ssh_port'] = 22
+gitlab_rails['backup_path'] = "/var/opt/gitlab/backups"
+gitlab_rails['backup_keep_time'] = 604800
+gitlab_rails['gitlab_signup_enabled'] = false
+
+letsencrypt['enable'] = false
+
+prometheus_monitoring['enable'] = false

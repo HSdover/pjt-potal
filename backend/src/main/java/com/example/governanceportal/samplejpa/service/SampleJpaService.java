@@ -2,7 +2,6 @@ package com.example.governanceportal.samplejpa.service;
 
 import com.example.governanceportal.common.error.BusinessException;
 import com.example.governanceportal.common.list.ListResponse;
-import com.example.governanceportal.common.list.ListSortRequest;
 import com.example.governanceportal.common.list.PageSupport;
 import com.example.governanceportal.samplejpa.domain.SampleJpa;
 import com.example.governanceportal.samplejpa.dto.SampleJpaCreateRequest;
@@ -14,7 +13,6 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -32,7 +30,7 @@ public class SampleJpaService {
     public ListResponse<SampleJpaItem> search(SampleJpaListRequest request) {
         int pageNo = PageSupport.normalizePageNo(request.pageNo());
         int pageSize = PageSupport.normalizePageSize(request.pageSize());
-        Pageable pageable = PageRequest.of(pageNo - 1, pageSize, toSort(request.sort()));
+        Pageable pageable = PageRequest.of(pageNo - 1, pageSize, SampleJpaSorts.toSort(request.sort()));
 
         Page<SampleJpa> page = sampleJpaRepository.search(request.filters(), pageable);
         List<SampleJpaItem> rows = page.getContent().stream()
@@ -64,43 +62,6 @@ public class SampleJpaService {
         }
 
         sampleJpaRepository.deleteById(id);
-    }
-
-    private Sort toSort(List<ListSortRequest> sort) {
-        if (sort == null || sort.isEmpty()) {
-            return Sort.by(Sort.Order.asc("id"));
-        }
-
-        List<Sort.Order> orders = sort.stream()
-            .map(this::toOrder)
-            .filter(order -> order != null)
-            .toList();
-
-        if (orders.isEmpty()) {
-            return Sort.by(Sort.Order.asc("id"));
-        }
-
-        return Sort.by(orders);
-    }
-
-    private Sort.Order toOrder(ListSortRequest sort) {
-        if (sort == null || !StringUtils.hasText(sort.field())) {
-            return null;
-        }
-
-        String property = switch (sort.field()) {
-            case "id" -> "id";
-            case "name" -> "name";
-            case "description" -> "description";
-            default -> "";
-        };
-
-        if (!StringUtils.hasText(property)) {
-            return null;
-        }
-
-        Sort.Direction direction = "desc".equalsIgnoreCase(sort.direction()) ? Sort.Direction.DESC : Sort.Direction.ASC;
-        return new Sort.Order(direction, property);
     }
 
     private String normalizeRequiredName(String value) {

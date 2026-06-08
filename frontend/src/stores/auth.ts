@@ -1,8 +1,9 @@
 import { defineStore } from "pinia";
-import { fetchCurrentUser } from "@/shared/api/session";
+import { fetchCurrentUser, loginLocal, logoutLocal, type LocalLoginRequest } from "@/shared/api/session";
 import { logClientError } from "@/shared/api/error-handler";
 
 type AuthSession = {
+  userId: string;
   userName: string;
   authenticated: boolean;
   permissions: string[];
@@ -10,6 +11,7 @@ type AuthSession = {
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
+    userId: "",
     userName: "",
     authenticated: false,
     sessionLoaded: false,
@@ -31,6 +33,7 @@ export const useAuthStore = defineStore("auth", {
     },
 
     setSession(session: AuthSession) {
+      this.userId = session.userId;
       this.userName = session.userName;
       this.authenticated = session.authenticated;
       this.permissions = [...session.permissions];
@@ -41,6 +44,7 @@ export const useAuthStore = defineStore("auth", {
       try {
         const user = await fetchCurrentUser();
         this.setSession({
+          userId: user.userId,
           userName: user.displayName,
           authenticated: user.authenticated,
           permissions: user.permissions,
@@ -53,10 +57,31 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    async login(request: LocalLoginRequest) {
+      const user = await loginLocal(request);
+      this.setSession({
+        userId: user.userId,
+        userName: user.displayName,
+        authenticated: user.authenticated,
+        permissions: user.permissions,
+      });
+      return user;
+    },
+
+    async logout() {
+      try {
+        await logoutLocal();
+      } finally {
+        this.clearSession();
+      }
+    },
+
     clearSession() {
+      this.userId = "";
       this.userName = "";
       this.authenticated = false;
       this.permissions = [];
+      this.sessionLoaded = true;
     },
   },
 });

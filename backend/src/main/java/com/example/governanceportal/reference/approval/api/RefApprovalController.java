@@ -5,6 +5,7 @@ import com.example.governanceportal.reference.approval.dto.RefApprovalItem;
 import com.example.governanceportal.reference.approval.service.RefApprovalService;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/reference/approvals")
+@PreAuthorize("@portalPermissionService.hasPermission(authentication, 'REF_VIEW')")
 public class RefApprovalController {
 
     private final RefApprovalService refApprovalService;

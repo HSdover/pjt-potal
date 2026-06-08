@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { ElMessage } from "element-plus";
+import { handleApiError } from "@/shared/api/error-handler";
+import { confirmDelete, confirmSave } from "@/shared/feedback/confirm-dialog";
 import {
   PortalButton,
   PortalCheckboxGroup,
@@ -17,6 +20,7 @@ import {
   type PortalRadioOption,
   type PortalSelectOption,
 } from "@/shared/components/tags";
+import { uploadReferenceAttachment, type ReferenceAttachment } from "../api";
 
 const textValue = ref("");
 const selectValue = ref("");
@@ -24,8 +28,16 @@ const buttonCount = ref(0);
 const checkedValues = ref<string[]>(["email"]);
 const radioValue = ref("personal");
 const dateValue = ref("2026-05-19");
-const uploadedFile = ref("첨부파일.zip");
+const uploadedAttachment = ref<ReferenceAttachment | null>({
+  attachmentId: "sample",
+  fileName: "attachment-sample.txt",
+  size: 0,
+  contentType: "text/plain",
+  downloadUrl: "/api/_ref/attachments/sample",
+});
 const pickedFiles = ref<File[]>([]);
+const filePickerRef = ref<{ commit: () => File[] } | null>(null);
+const savingAttachment = ref(false);
 const currentPage = ref(1);
 const pageSize = ref(10);
 const memo = ref("");
@@ -52,6 +64,37 @@ const pageSummary = computed(() => `현재 ${currentPage.value}페이지 / ${pag
 
 function onDownloadClick() {
   downloaded.value = true;
+}
+
+async function savePickedFiles() {
+  const files = filePickerRef.value?.commit() ?? pickedFiles.value;
+  const file = files[0];
+  if (!file) {
+    ElMessage.warning("저장할 첨부파일을 선택하세요.");
+    return;
+  }
+
+  const confirmed = await confirmSave("선택한 첨부파일을 저장하시겠습니까?");
+  if (!confirmed) {
+    return;
+  }
+
+  savingAttachment.value = true;
+  try {
+    uploadedAttachment.value = await uploadReferenceAttachment(file);
+    ElMessage.success("첨부파일을 저장했습니다.");
+  } catch (error) {
+    handleApiError(error, "첨부파일 저장에 실패했습니다.");
+  } finally {
+    savingAttachment.value = false;
+  }
+}
+
+async function removeUploadedAttachment() {
+  const confirmed = await confirmDelete("화면에서 첨부파일 링크를 제거하시겠습니까?");
+  if (confirmed) {
+    uploadedAttachment.value = null;
+  }
 }
 </script>
 
@@ -115,21 +158,26 @@ function onDownloadClick() {
             <td>7</td>
             <td>
               <PortalFileLink
-                v-if="uploadedFile"
-                :file-name="uploadedFile"
-                href="#download-file"
-                @remove="uploadedFile = ''"
+                v-if="uploadedAttachment"
+                :file-name="uploadedAttachment.fileName"
+                :href="uploadedAttachment.downloadUrl"
+                @remove="removeUploadedAttachment"
               />
               <span v-else class="text-sm text-slate-400">삭제됨</span>
             </td>
             <td>업로드 파일 링크</td>
-            <td>{{ uploadedFile || "파일 링크 제거" }}</td>
+            <td>{{ uploadedAttachment?.fileName || "파일 링크 제거" }}</td>
           </tr>
           <tr>
             <td>8</td>
-            <td><PortalFilePicker v-model="pickedFiles" accept=".zip,.pdf,.xlsx" /></td>
+            <td>
+              <div class="flex flex-wrap items-center gap-2">
+                <PortalFilePicker ref="filePickerRef" v-model="pickedFiles" accept=".zip,.pdf,.xlsx" defer />
+                <PortalButton variant="primary" :disabled="savingAttachment" @click="savePickedFiles">저장</PortalButton>
+              </div>
+            </td>
             <td>파일 업로드 버튼</td>
-            <td>{{ pickedFiles.length }}개 선택</td>
+            <td>{{ uploadedAttachment ? `${uploadedAttachment.fileName} 저장됨` : "저장된 파일 없음" }}</td>
           </tr>
           <tr>
             <td>9</td>

@@ -22,13 +22,23 @@ management:
       enabled: false
 
 app:
+  attachment:
+    storage-root: ${java.io.tmpdir}/governance-portal-test/attachments
   auth:
     local-dev-user:
       enabled: true
       user-id: local-test
       display-name: Local Test User
+      password: local-test-pass
       permissions:
         - DASHBOARD_READ
+        - META_VIEW
+        - PIPELINE_READ
+        - AI_AGENT_READ
+        - REQUEST_READ
+        - DP_VIEWER_READ
+        - NOTICE_READ
+        - PERMISSION_MANAGE
         - SAMPLE_READ
         - SAMPLE_CREATE
         - SAMPLE_UPDATE
@@ -37,5 +47,32 @@ app:
         - SAMPLE_JPA_CREATE
         - SAMPLE_JPA_UPDATE
         - SAMPLE_JPA_DELETE
+        - SAMPLE_JPA_EXPORT
+        - SAMPLE_JPA_IMPORT
         - REF_VIEW
         - BATCH_ADMIN
+      users:
+        - user-id: local-test
+          display-name: Local Test User
+          password: local-test-pass
+          permissions:
+            - DASHBOARD_READ
+            - META_VIEW
+            - PIPELINE_READ
+            - AI_AGENT_READ
+            - REQUEST_READ
+            - DP_VIEWER_READ
+            - NOTICE_READ
+            - PERMISSION_MANAGE
+            - SAMPLE_READ
+            - SAMPLE_CREATE
+            - SAMPLE_UPDATE
+            - SAMPLE_DELETE
+            - SAMPLE_JPA_READ
+            - SAMPLE_JPA_CREATE
+            - SAMPLE_JPA_UPDATE
+            - SAMPLE_JPA_DELETE
+            - SAMPLE_JPA_EXPORT
+            - SAMPLE_JPA_IMPORT
+            - REF_VIEW
+            - BATCH_ADMIN

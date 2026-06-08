@@ -1,0 +1,122 @@
+[
+  {
+    "id": "Vue.volar",
+    "group": "required",
+    "reason": "Vue 3 SFC, script setup, template, TypeScript language support"
+  },
+  {
+    "id": "dbaeumer.vscode-eslint",
+    "group": "required",
+    "reason": "Project ESLint diagnostics and npm run lint alignment"
+  },
+  {
+    "id": "redhat.java",
+    "group": "required",
+    "reason": "Java 21 language server for Spring Boot backend"
+  },
+  {
+    "id": "vscjava.vscode-gradle",
+    "group": "required",
+    "reason": "Gradle task discovery and backend build/test execution"
+  },
+  {
+    "id": "vscjava.vscode-java-debug",
+    "group": "required",
+    "reason": "Java debugger support"
+  },
+  {
+    "id": "vscjava.vscode-java-test",
+    "group": "required",
+    "reason": "JUnit test discovery and execution"
+  },
+  {
+    "id": "vscjava.vscode-java-dependency",
+    "group": "required",
+    "reason": "Java dependency/project explorer support"
+  },
+  {
+    "id": "vmware.vscode-spring-boot",
+    "group": "required",
+    "reason": "Spring Boot configuration metadata, bean/endpoints, application support"
+  },
+  {
+    "id": "vscjava.vscode-spring-boot-dashboard",
+    "group": "recommended",
+    "reason": "Spring Boot app dashboard and run controls"
+  },
+  {
+    "id": "vscjava.vscode-spring-initializr",
+    "group": "recommended",
+    "reason": "Spring Boot project tooling dependency used by common Spring extension setups"
+  },
+  {
+    "id": "redhat.vscode-yaml",
+    "group": "recommended",
+    "reason": "YAML support for application.yml, env/deployment docs, CI templates"
+  },
+  {
+    "id": "redhat.vscode-xml",
+    "group": "recommended",
+    "reason": "XML support for SAML metadata and JVM/Spring XML artifacts if needed"
+  },
+  {
+    "id": "bradlc.vscode-tailwindcss",
+    "group": "recommended",
+    "reason": "Tailwind class IntelliSense for Vue templates"
+  },
+  {
+    "id": "csstools.postcss",
+    "group": "recommended",
+    "reason": "PostCSS syntax support for frontend CSS pipeline"
+  },
+  {
+    "id": "ms-playwright.playwright",
+    "group": "recommended",
+    "reason": "Playwright e2e test discovery and debugging"
+  },
+  {
+    "id": "vitest.explorer",
+    "group": "recommended",
+    "reason": "Vitest unit test discovery and execution"
+  },
+  {
+    "id": "ms-vscode.PowerShell",
+    "group": "recommended",
+    "reason": "PowerShell scripts used by Windows build/offline operations"
+  },
+  {
+    "id": "EditorConfig.EditorConfig",
+    "group": "optional",
+    "reason": "EditorConfig support when site policy adds .editorconfig"
+  },
+  {
+    "id": "yzhang.markdown-all-in-one",
+    "group": "optional",
+    "reason": "Markdown documentation authoring support"
+  },
+  {
+    "id": "humao.rest-client",
+    "group": "optional",
+    "reason": "Local API smoke testing from .http files"
+  },
+  {
+    "id": "christian-kohler.path-intellisense",
+    "group": "optional",
+    "reason": "Path autocomplete in imports and config files"
+  },
+  {
+    "id": "christian-kohler.npm-intellisense",
+    "group": "optional",
+    "reason": "npm package autocomplete for frontend imports"
+  },
+  {
+    "id": "eamodio.gitlens",
+    "group": "optional",
+    "reason": "Git history and blame inspection"
+  },
+  {
+    "id": "Oracle.oracledevtools",
+    "group": "optional",
+    "reason": "Oracle DB/ADB inspection when site policy allows DB tooling in VS Code"
+  }
+]

@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.web.SecurityFilterChain;
@@ -15,20 +16,32 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import com.example.governanceportal.user.service.PortalPermissionService;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
     @Profile("!saml")
-    SecurityFilterChain permitAllSecurityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain localSecurityFilterChain(
+        HttpSecurity http,
+        PortalPermissionService portalPermissionService
+    ) throws Exception {
         return http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico").permitAll()
                 .requestMatchers("/actuator/health", "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                .requestMatchers("/api/admin/**").permitAll()
-                .requestMatchers("/api/**").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/logout", "/api/me").permitAll()
+                .requestMatchers("/api/system/permissions/**").access((authentication, context) ->
+                    new AuthorizationDecision(portalPermissionService.hasPermission(authentication.get(), "PERMISSION_MANAGE")))
+                .requestMatchers("/api/admin/**").access((authentication, context) ->
+                    new AuthorizationDecision(portalPermissionService.hasPermission(authentication.get(), "BATCH_ADMIN")))
+                .requestMatchers("/api/**").authenticated()
                 .requestMatchers("/h2-console/**").permitAll()
                 .anyRequest().permitAll())
+            .exceptionHandling(exception -> exception
+                .defaultAuthenticationEntryPointFor(
+                    (request, response, authException) -> response.sendError(HttpServletResponse.SC_UNAUTHORIZED),
+                    new AntPathRequestMatcher("/api/**")))
             .headers(headers -> headers.frameOptions(Customizer.withDefaults()).disable())
             .build();
     }
@@ -48,6 +61,8 @@ public class SecurityConfig {
                 .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/login/**", "/saml2/**").permitAll()
+                .requestMatchers("/api/system/permissions/**").access((authentication, context) ->
+                    new AuthorizationDecision(portalPermissionService.hasPermission(authentication.get(), "PERMISSION_MANAGE")))
                 .requestMatchers("/api/admin/**").access((authentication, context) ->
                     new AuthorizationDecision(portalPermissionService.hasPermission(authentication.get(), "BATCH_ADMIN")))
                 .anyRequest().authenticated())

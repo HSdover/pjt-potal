@@ -1,0 +1,8 @@
+{
+  "feature": "integrated-meta-grid",
+  "type": "integrated-meta-grid",
+  "title": "통합메타관리",
+  "description": "정형, 파일, 반정형 메타를 통합 조회합니다.",
+  "auth": "META_VIEW",
+  "apiPath": "/api/metadata/integrated/search"
+}

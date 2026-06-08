@@ -29,6 +29,8 @@ Governance Portal 오프라인 빌드 가이드
 - 준비된 Gradle cache로 `gradlew.bat --offline`을 실행해 오프라인 빌드 가능 여부를 검증합니다.
 - `backend/build/libs/governance-portal-backend.jar` 빌드를 검증합니다.
 
+백엔드 Gradle 의존성이 바뀌면, 예를 들어 EasyExcel 같은 라이브러리를 추가하면, 내부망 반입 전에 이 명령을 다시 실행해 `offline/gradle-home`을 갱신해야 합니다.
+
 4. 내부망 이동
 
 프로젝트 폴더 전체를 내부망 PC로 복사합니다.
@@ -40,7 +42,10 @@ Governance Portal 오프라인 빌드 가이드
 - `offline/nodejs`
 - `frontend`
 - `backend`
-- `data`
+
+VS Code 오프라인 개발 환경까지 같이 준비하려면 다음 폴더도 함께 이동합니다.
+
+- `offline/vscode-extensions`
 
 `offline` 하위 캐시는 `.gitignore` 대상입니다. 내부망 PC에서 git clone만 수행하면 캐시가 빠지므로, 프로젝트 폴더 전체를 복사하거나 offline 폴더를 별도 압축 파일로 함께 전달해야 합니다.
 
@@ -79,5 +84,5 @@ Test-Path backend\build\libs\governance-portal-backend.jar
 
 8. 참고
 
-- Nginx 설정 예시는 `infra/nginx/governance-portal.conf`를 사용합니다.
+- Nginx 설정 예시는 HTTP 초기 확인용 `infra/nginx/governance-portal.conf`, SAML 운영 HTTPS용 `infra/nginx/governance-portal-https.conf`를 사용합니다.
 - systemd 서비스 예시는 `infra/systemd/governance-portal.service`를 사용합니다.

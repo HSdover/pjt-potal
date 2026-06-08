@@ -8,20 +8,15 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal;
 import org.springframework.stereotype.Service;
 
-import com.example.governanceportal.user.config.LocalDevUserProperties;
 import com.example.governanceportal.user.dto.CurrentUser;
+import com.example.governanceportal.user.dto.LocalAuthenticatedPrincipal;
 
 @Service
 public class CurrentUserService {
 
-    private final LocalDevUserProperties localDevUserProperties;
     private final PortalPermissionService portalPermissionService;
 
-    public CurrentUserService(
-        LocalDevUserProperties localDevUserProperties,
-        PortalPermissionService portalPermissionService
-    ) {
-        this.localDevUserProperties = localDevUserProperties;
+    public CurrentUserService(PortalPermissionService portalPermissionService) {
         this.portalPermissionService = portalPermissionService;
     }
 
@@ -29,16 +24,16 @@ public class CurrentUserService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || authentication instanceof AnonymousAuthenticationToken) {
-            if (localDevUserProperties.isEnabled()) {
-                return new CurrentUser(
-                    localDevUserProperties.getUserId(),
-                    localDevUserProperties.getDisplayName(),
-                    true,
-                    localDevUserProperties.getPermissions()
-                );
-            }
-
             return new CurrentUser("anonymous", "Anonymous", false, List.of());
+        }
+
+        if (authentication.getPrincipal() instanceof LocalAuthenticatedPrincipal principal) {
+            return new CurrentUser(
+                principal.userId(),
+                principal.displayName(),
+                true,
+                principal.permissions()
+            );
         }
 
         if (authentication.getPrincipal() instanceof Saml2AuthenticatedPrincipal principal) {

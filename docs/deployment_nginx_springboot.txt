@@ -38,12 +38,25 @@ Backend:
 .\scripts\build-production.ps1
 ```
 
+내부망처럼 인터넷 접근이 막힌 PC에서 빌드해야 하면 일반 빌드 대신 오프라인 빌드를 사용합니다.
+
+```powershell
+# 인터넷 가능 PC에서 캐시 준비
+.\scripts\prepare-offline-bundle.ps1
+
+# 내부망 PC에서 빌드
+.\scripts\build-offline-jar.ps1
+```
+
+오프라인 빌드는 `offline/gradle-home`, `offline/npm-cache`, `offline/nodejs`를 함께 반입해야 동작합니다. 세부 절차는 `docs/offline_build_guide.txt`를 따릅니다.
+
 4. Nginx 설정
 
 예시 파일:
 
 ```text
-infra/nginx/governance-portal.conf
+infra/nginx/governance-portal.conf        # HTTP 초기 확인용
+infra/nginx/governance-portal-https.conf  # SAML 운영 HTTPS용
 ```
 
 핵심 규칙:
@@ -53,7 +66,10 @@ infra/nginx/governance-portal.conf
 - SAML 사용 시 `/login/*`, `/saml2/*`도 Spring Boot로 proxy합니다.
 - `/api-docs/*`, `/swagger-ui*`, `/actuator/*`도 Spring Boot로 proxy합니다.
 - Nginx는 `X-Request-Id`를 백엔드로 전달하고 access log에도 남깁니다.
+- Excel 업로드를 위해 Nginx는 `client_max_body_size 25m`를 둡니다. Spring Boot multipart 기본값은 env 기준 `20MB/25MB`입니다.
 - 그 외 프론트 라우트는 `try_files $uri $uri/ /index.html`로 처리합니다.
+
+SAML 운영에서는 `infra/nginx/governance-portal-https.conf`를 기준으로 `server_name`, TLS 인증서 경로를 실제 값으로 바꾼 뒤 `/etc/nginx/conf.d/governance-portal.conf`에 반영합니다.
 
 5. Spring Boot 실행
 
@@ -69,10 +85,16 @@ infra/systemd/governance-portal.service
 infra/env/governance-portal.env.template
 ```
 
+개발서버 env 템플릿:
+
+```text
+infra/env/governance-portal.dev.env.template
+```
+
 수동 실행 예:
 
 ```bash
-SERVER_PORT=18080 java -jar /opt/governance-portal/governance-portal-backend.jar
+SERVER_ADDRESS=127.0.0.1 SERVER_PORT=18080 java -jar /opt/governance-portal/governance-portal-backend.jar
 ```
 
 운영 실행은 `infra/systemd/governance-portal.service`처럼 `/opt/governance-portal/config/governance-portal.env`를 `EnvironmentFile`로 분리해 DB, SAML, 포트 값을 주입합니다.
@@ -83,6 +105,7 @@ SERVER_PORT=18080 java -jar /opt/governance-portal/governance-portal-backend.jar
 - Spring Boot: 127.0.0.1:18080
 
 Spring Boot 포트는 외부에 직접 노출하지 않는 것을 권장합니다.
+운영 env에는 `SERVER_ADDRESS=127.0.0.1`을 넣어 애플리케이션 자체도 localhost에만 bind되도록 합니다.
 
 7. 운영 배치 예시
 
@@ -125,6 +148,11 @@ curl -X POST http://localhost/api/samples/search \
 - Vue 새로고침 처리는 Nginx `try_files`가 담당합니다.
 - Spring Boot에는 `server.forward-headers-strategy=framework`를 설정해 reverse proxy 헤더를 인식하게 합니다.
 - SAML 운영에서는 Nginx가 `X-Forwarded-Proto`, `X-Forwarded-Host`, `X-Forwarded-Port`를 전달해야 ACS/metadata URL이 운영 도메인 기준으로 생성됩니다.
+- SAML 운영에서는 `infra/nginx/governance-portal-https.conf`처럼 80을 443으로 리다이렉트하고, 443 server에서 정적 파일과 프록시를 처리합니다.
 - 운영 장애 추적을 위해 Nginx access log의 request_id와 Spring Boot 로그의 `requestId`를 같은 값으로 맞춥니다.
-- 운영 DB를 사용할 경우 `GOVERNANCE_DATASOURCE_URL`, `GOVERNANCE_DATASOURCE_USERNAME`, `GOVERNANCE_DATASOURCE_PASSWORD`를 반드시 외부 환경 변수로 주입합니다.
+- 운영 DB를 사용할 경우 `SPRING_PROFILES_ACTIVE=saml,prod`와 `GOVERNANCE_PROD_DATASOURCE_URL`, `GOVERNANCE_PROD_DATASOURCE_USERNAME`, `GOVERNANCE_PROD_DATASOURCE_PASSWORD`를 반드시 외부 환경 변수로 주입합니다.
+- 개발서버 DB를 사용할 경우 `SPRING_PROFILES_ACTIVE=saml,dev`와 `GOVERNANCE_DEV_DATASOURCE_URL`, `GOVERNANCE_DEV_DATASOURCE_USERNAME`, `GOVERNANCE_DEV_DATASOURCE_PASSWORD`를 사용합니다.
+- `dev`/`prod` 프로파일은 `schema.sql`/`data.sql`을 실행하지 않습니다. 실제 DB 테이블은 DBA 또는 마이그레이션 절차로 준비해야 합니다.
+- 권한관리 기능을 사용하려면 `portal_permission`, `portal_iam_role`, `portal_permission_assignment` 테이블과 기본 역할 데이터(`관리자`, `AI 에이전트관리자`, `데이터 관리자`)를 실제 DB에 반영해야 합니다.
 - 운영 캐시는 Redis가 기본이며, Redis 없이 로컬 개발할 때는 `local` profile의 `simple` cache를 사용합니다.
+- Excel 업로드 413 오류가 나면 Spring Boot `GOVERNANCE_MULTIPART_MAX_FILE_SIZE`/`GOVERNANCE_MULTIPART_MAX_REQUEST_SIZE`와 Nginx `client_max_body_size`를 함께 확인합니다.

@@ -1,0 +1,34 @@
+# Development server database profile.
+# Activate with:
+#   SPRING_PROFILES_ACTIVE=dev
+#   SPRING_PROFILES_ACTIVE=saml,dev
+#
+# Use GOVERNANCE_DEV_DATASOURCE_* variables when dev/prod credentials must coexist on one host.
+# Generic GOVERNANCE_DATASOURCE_* variables are also accepted as a fallback.
+spring:
+  batch:
+    jdbc:
+      initialize-schema: ${GOVERNANCE_BATCH_SCHEMA_INITIALIZE:never}
+  datasource:
+    url: ${GOVERNANCE_DEV_DATASOURCE_URL:${GOVERNANCE_DATASOURCE_URL}}
+    driver-class-name: ${GOVERNANCE_DEV_DATASOURCE_DRIVER:${GOVERNANCE_DATASOURCE_DRIVER:oracle.jdbc.OracleDriver}}
+    username: ${GOVERNANCE_DEV_DATASOURCE_USERNAME:${GOVERNANCE_DATASOURCE_USERNAME}}
+    password: ${GOVERNANCE_DEV_DATASOURCE_PASSWORD:${GOVERNANCE_DATASOURCE_PASSWORD}}
+    hikari:
+      pool-name: governance-dev-db
+      maximum-pool-size: ${GOVERNANCE_DATASOURCE_MAX_POOL_SIZE:10}
+      minimum-idle: ${GOVERNANCE_DATASOURCE_MIN_IDLE:2}
+      connection-timeout: ${GOVERNANCE_DATASOURCE_CONNECTION_TIMEOUT:30000}
+  sql:
+    init:
+      mode: ${GOVERNANCE_SQL_INIT_MODE:never}
+  cache:
+    type: ${GOVERNANCE_CACHE_TYPE:simple}
+  h2:
+    console:
+      enabled: false
+
+management:
+  health:
+    redis:
+      enabled: ${GOVERNANCE_REDIS_HEALTH_ENABLED:false}
