@@ -115,6 +115,17 @@ const router = createRouter({
       },
     },
     {
+      path: "/system/menus",
+      component: () => import("@/features/menu-management/pages/MenuManagementListPage.vue"),
+      meta: {
+        ...menuItem(systemMenu, "menus", "메뉴관리", 30),
+        title: "메뉴관리",
+        menuTitle: "메뉴관리",
+        menu: true,
+        auth: "MENU_MANAGE",
+      },
+    },
+    {
       path: "/development-reference/dashboard-1",
       component: () => import("@/views/DashboardView.vue"),
       meta: {

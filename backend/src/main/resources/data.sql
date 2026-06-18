@@ -45,6 +45,7 @@ VALUES
     ('DP_VIEWER_READ', 'DP뷰어 조회', 'SCREEN', 'dp-viewer', 'READ', '문서 파싱 목록 조회 권한'),
     ('NOTICE_READ', '공지사항 조회', 'SCREEN', 'system.notice', 'READ', '시스템 공지사항 조회 권한'),
     ('PERMISSION_MANAGE', '권한관리', 'ADMIN', 'system.permission', 'MANAGE', '사용자/그룹/IAM 역할별 포털 권한 관리 권한'),
+    ('MENU_MANAGE', '메뉴관리', 'ADMIN', 'system.menu', 'MANAGE', '메뉴 등록/수정과 메뉴 진입 권한 자동 생성 권한'),
     ('REF_VIEW', '개발참고 조회', 'SCREEN', 'development-reference', 'READ', '개발참고 메뉴와 샘플 화면 조회 권한'),
     ('SAMPLE_READ', '샘플 CRUD 조회', 'SCREEN', 'sample', 'READ', '샘플 CRUD 목록 조회 권한'),
     ('SAMPLE_CREATE', '샘플 CRUD 등록', 'CRUD', 'sample', 'CREATE', '샘플 CRUD 등록 권한'),
@@ -57,6 +58,55 @@ VALUES
     ('SAMPLE_JPA_EXPORT', 'JPA 샘플 다운로드', 'DOWNLOAD', 'sample-jpa', 'DOWNLOAD', 'JPA 샘플 엑셀/대용량 다운로드 권한'),
     ('SAMPLE_JPA_IMPORT', 'JPA 샘플 업로드', 'UPLOAD', 'sample-jpa', 'UPLOAD', 'JPA 샘플 엑셀 업로드 권한'),
     ('BATCH_ADMIN', '배치 관리', 'ADMIN', 'batch', 'MANAGE', '배치 작업 목록 조회와 수동 실행 권한');
+
+INSERT INTO portal_menu (
+    menu_id,
+    parent_menu_id,
+    menu_name,
+    route_path,
+    permission_code,
+    sort_order,
+    visible,
+    enabled,
+    created_at,
+    updated_at
+)
+VALUES
+    ('metadata', NULL, '메타데이터', NULL, NULL, 10, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('pipeline', NULL, '파이프라인관리', NULL, NULL, 20, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('ai-data', NULL, 'AI데이터관리', NULL, NULL, 30, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('request', NULL, '신청관리', NULL, NULL, 40, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('dp-viewer', NULL, 'DP뷰어', NULL, NULL, 50, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('dashboard', NULL, '대시보드', NULL, NULL, 60, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('system', NULL, '시스템 관리', NULL, NULL, 70, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('development-reference', NULL, '개발참고', NULL, NULL, 900, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+
+    ('metadata-management', 'metadata', '메타관리', '/metadata/management', 'META_VIEW', 10, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('pipeline-list', 'pipeline', '파이프라인목록', '/pipelines', 'PIPELINE_READ', 10, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('ai-data-agent-mapping', 'ai-data', 'AI에이전트 매핑', '/ai-data/agent-mapping', 'AI_AGENT_READ', 10, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('ai-data-data-mesh', 'ai-data', '데이터 매쉬', '/ai-data/data-mesh', 'AI_AGENT_READ', 20, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('request-pipeline-requests', 'request', '파이프라인신청 목록', '/requests/pipelines', 'REQUEST_READ', 10, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('request-ai-agent-requests', 'request', 'AI에이전트 신청목록', '/requests/ai-agents', 'REQUEST_READ', 20, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('dp-viewer-document-parsing', 'dp-viewer', '문서 파싱 목록', '/dp-viewer/document-parsing', 'DP_VIEWER_READ', 10, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('dashboard-daily', 'dashboard', '일현황', '/', 'DASHBOARD_READ', 10, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('dashboard-pipeline-status', 'dashboard', '파이프라인 현황', '/dashboard/pipelines', 'DASHBOARD_READ', 20, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('dashboard-ai-agent-status', 'dashboard', 'AI에이전트 현황', '/dashboard/ai-agents', 'DASHBOARD_READ', 30, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('system-notices', 'system', '공지사항', '/system/notices', 'NOTICE_READ', 10, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('system-permissions', 'system', '권한관리', '/system/permissions', 'PERMISSION_MANAGE', 20, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('system-menus', 'system', '메뉴관리', '/system/menus', 'MENU_MANAGE', 30, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+
+    ('development-reference-dashboard', 'development-reference', '대시보드', NULL, NULL, 10, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('development-reference-grid-sample', 'development-reference', '그리드 샘플', NULL, NULL, 20, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('development-reference-dashboard-1', 'development-reference-dashboard', '대시보드1', '/development-reference/dashboard-1', 'DASHBOARD_READ', 10, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('development-reference-dashboard-2', 'development-reference-dashboard', '대시보드2', '/_ref-dashboard', 'REF_VIEW', 20, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('development-reference-sample-list', 'development-reference-grid-sample', '샘플 CRUD', '/sample-list', 'SAMPLE_READ', 10, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('development-reference-sample-list-jpa', 'development-reference-grid-sample', 'JPA 샘플', '/sample-list-jpa', 'SAMPLE_JPA_READ', 20, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('development-reference-metadata-management', 'development-reference-grid-sample', '통합메타관리', '/development-reference/metadata-management', 'META_VIEW', 30, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('development-reference-detail', 'development-reference', '상세 조회', '/_ref-detail', 'REF_VIEW', 30, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('development-reference-form', 'development-reference', '신청/등록 폼', '/_ref-form', 'REF_VIEW', 40, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('development-reference-approval', 'development-reference', '승인 워크플로우', '/_ref-approval', 'REF_VIEW', 50, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('development-reference-board', 'development-reference', '게시판', '/_ref-board', 'REF_VIEW', 60, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00'),
+    ('development-reference-tags', 'development-reference', '공통 태그', '/_ref-tags', 'REF_VIEW', 70, TRUE, TRUE, TIMESTAMP '2026-06-18 00:00:00', TIMESTAMP '2026-06-18 00:00:00');
 
 INSERT INTO portal_iam_role (
     role_code,

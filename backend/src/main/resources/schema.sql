@@ -2,6 +2,7 @@ DROP TABLE IF EXISTS gov_integrated_meta_column;
 DROP TABLE IF EXISTS gov_integrated_meta_section_field;
 DROP TABLE IF EXISTS gov_integrated_meta_section;
 DROP TABLE IF EXISTS gov_integrated_meta;
+DROP TABLE IF EXISTS portal_menu;
 DROP TABLE IF EXISTS portal_permission_assignment;
 DROP TABLE IF EXISTS portal_iam_role;
 DROP TABLE IF EXISTS portal_permission;
@@ -35,6 +36,25 @@ CREATE TABLE portal_permission (
     action_code     VARCHAR(30) NOT NULL,
     description     VARCHAR(1000)
 );
+
+CREATE TABLE portal_menu (
+    menu_id         VARCHAR(80) PRIMARY KEY,
+    parent_menu_id  VARCHAR(80),
+    menu_name       VARCHAR(120) NOT NULL,
+    route_path      VARCHAR(300),
+    permission_code VARCHAR(80),
+    sort_order      INT DEFAULT 0 NOT NULL,
+    visible         BOOLEAN DEFAULT TRUE NOT NULL,
+    enabled         BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at      TIMESTAMP NOT NULL,
+    updated_at      TIMESTAMP NOT NULL,
+    CONSTRAINT fk_portal_menu_parent_menu FOREIGN KEY (parent_menu_id) REFERENCES portal_menu(menu_id),
+    CONSTRAINT fk_portal_menu_permission_code FOREIGN KEY (permission_code) REFERENCES portal_permission(permission_code),
+    CONSTRAINT uq_portal_menu_route UNIQUE (route_path)
+);
+
+CREATE INDEX idx_portal_menu_parent ON portal_menu(parent_menu_id, sort_order);
+CREATE INDEX idx_portal_menu_permission ON portal_menu(permission_code);
 
 CREATE TABLE portal_iam_role (
     role_code           VARCHAR(50) PRIMARY KEY,

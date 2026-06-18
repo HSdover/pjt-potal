@@ -1,0 +1,26 @@
+{
+  "feature": "menu-management",
+  "type": "search-grid",
+  "title": "메뉴관리",
+  "description": "메뉴 경로와 진입 권한을 관리합니다.",
+  "auth": "MENU_MANAGE",
+  "apiPath": "/api/system/menus/search",
+  "backend": {
+    "basePackage": "com.example.governanceportal.system",
+    "packageName": "menu",
+    "className": "PortalMenu",
+    "tableName": "portal_menu",
+    "idColumn": "menu_id",
+    "fields": [
+      { "name": "menuId", "type": "String", "column": "menu_id" },
+      { "name": "parentMenuId", "type": "String", "column": "parent_menu_id" },
+      { "name": "menuName", "type": "String", "column": "menu_name" },
+      { "name": "routePath", "type": "String", "column": "route_path" },
+      { "name": "permissionCode", "type": "String", "column": "permission_code" },
+      { "name": "sortOrder", "type": "Integer", "column": "sort_order" },
+      { "name": "visible", "type": "Boolean", "column": "visible" },
+      { "name": "enabled", "type": "Boolean", "column": "enabled" }
+    ],
+    "keywordFields": ["menuId", "parentMenuId", "menuName", "routePath", "permissionCode"]
+  }
+}

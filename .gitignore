@@ -19,8 +19,14 @@ offline/npm-cache/
 offline/nodejs/
 offline/npm/
 offline/gradle/
+offline/jdk/
+offline/vscode-extensions/vsix/
 !offline/README.md
 !offline/.gitkeep
+
+# 내부망 Git 서버 설치 키트 대용량 바이너리
+tools/git-server-kits/**/downloads/*.rpm
+tools/git-server-kits/**/downloads/gitea-*-linux-amd64
 
 # 대용량 배포/핸드오프 산출물 (Git에 커밋 금지)
 *.zip

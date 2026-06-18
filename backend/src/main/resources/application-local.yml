@@ -38,6 +38,7 @@ app:
         - DP_VIEWER_READ
         - NOTICE_READ
         - PERMISSION_MANAGE
+        - MENU_MANAGE
         - SAMPLE_READ
         - SAMPLE_CREATE
         - SAMPLE_UPDATE
@@ -63,6 +64,7 @@ app:
             - DP_VIEWER_READ
             - NOTICE_READ
             - PERMISSION_MANAGE
+            - MENU_MANAGE
             - SAMPLE_READ
             - SAMPLE_CREATE
             - SAMPLE_UPDATE
@@ -87,6 +89,7 @@ app:
             - DP_VIEWER_READ
             - NOTICE_READ
             - PERMISSION_MANAGE
+            - MENU_MANAGE
             - SAMPLE_READ
             - SAMPLE_CREATE
             - SAMPLE_UPDATE

@@ -1,14 +1,20 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import { ElMenu, ElMenuItem, ElSubMenu } from "element-plus";
 import PortalButton from "@/shared/components/tags/PortalButton.vue";
 import { hasPermission } from "@/shared/auth/permissions";
+import { logClientError } from "@/shared/api/error-handler";
 import { useAuthStore } from "@/stores/auth";
+import { fetchPortalMenus } from "@/features/menu-management/api";
+import type { PortalMenuItem } from "@/features/menu-management/types";
 
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
+const portalMenus = ref<PortalMenuItem[]>([]);
+const portalMenuLoaded = ref(false);
+const portalMenuLoadFailed = ref(false);
 
 type MenuScreen = {
   path: string;
@@ -34,6 +40,14 @@ type MenuRoot = {
 const activeMenu = computed(() => route.path);
 const publicRoute = computed(() => route.meta.public === true);
 const menuGroups = computed(() => {
+  if (portalMenuLoaded.value && !portalMenuLoadFailed.value) {
+    return buildPortalMenuGroups(portalMenus.value);
+  }
+
+  return buildRouterMenuGroups();
+});
+
+function buildRouterMenuGroups() {
   const roots = new Map<string, MenuRoot>();
 
   router.getRoutes()
@@ -99,7 +113,107 @@ const menuGroups = computed(() => {
         .sort((left, right) => left.order - right.order),
     }))
     .sort((left, right) => left.order - right.order);
-});
+}
+
+function buildPortalMenuGroups(items: PortalMenuItem[]) {
+  const childrenByParent = new Map<string, PortalMenuItem[]>();
+  items
+    .filter(canShowPortalMenu)
+    .forEach((item) => {
+      const parentKey = item.parentMenuId ?? "";
+      childrenByParent.set(parentKey, [...(childrenByParent.get(parentKey) ?? []), item]);
+    });
+
+  return (childrenByParent.get("") ?? [])
+    .sort(comparePortalMenu)
+    .map((root): MenuRoot => ({
+      key: root.menuId,
+      title: root.menuName,
+      order: root.sortOrder,
+      sections: (childrenByParent.get(root.menuId) ?? [])
+        .sort(comparePortalMenu)
+        .map((section) => toMenuSection(section, childrenByParent))
+        .filter((section): section is MenuSection => section !== null),
+    }))
+    .filter((root) => root.sections.length > 0);
+}
+
+function toMenuSection(section: PortalMenuItem, childrenByParent: Map<string, PortalMenuItem[]>): MenuSection | null {
+  const children = (childrenByParent.get(section.menuId) ?? [])
+    .sort(comparePortalMenu)
+    .filter((child) => child.routePath)
+    .map((child) => ({
+      path: child.routePath ?? "",
+      title: child.menuName,
+      order: child.sortOrder,
+    }));
+
+  if (children.length > 0) {
+    return {
+      key: section.menuId,
+      title: section.menuName,
+      order: section.sortOrder,
+      path: "",
+      children,
+    };
+  }
+
+  if (!section.routePath) {
+    return null;
+  }
+
+  return {
+    key: section.menuId,
+    title: section.menuName,
+    order: section.sortOrder,
+    path: section.routePath,
+    children: [],
+  };
+}
+
+function canShowPortalMenu(item: PortalMenuItem) {
+  if (!item.visible || !item.enabled || !hasMenuPermission(item.permissionCode)) {
+    return false;
+  }
+  return !item.routePath || router.resolve(item.routePath).matched.length > 0;
+}
+
+function hasMenuPermission(permissionCode?: string | null) {
+  return !permissionCode || hasPermission(permissionCode);
+}
+
+function comparePortalMenu(left: PortalMenuItem, right: PortalMenuItem) {
+  const orderCompare = left.sortOrder - right.sortOrder;
+  return orderCompare === 0 ? left.menuId.localeCompare(right.menuId) : orderCompare;
+}
+
+async function loadPortalMenus() {
+  try {
+    portalMenus.value = await fetchPortalMenus();
+    portalMenuLoadFailed.value = false;
+  } catch (error) {
+    portalMenus.value = [];
+    portalMenuLoadFailed.value = true;
+    logClientError(error, "Failed to load portal menus.");
+  } finally {
+    portalMenuLoaded.value = true;
+  }
+}
+
+watch(
+  () => auth.isAuthenticated,
+  (authenticated) => {
+    if (!authenticated) {
+      portalMenus.value = [];
+      portalMenuLoaded.value = false;
+      portalMenuLoadFailed.value = false;
+      return;
+    }
+
+    void loadPortalMenus();
+  },
+  { immediate: true },
+);
 
 function handleSelect(key: string) {
   void router.push(key);

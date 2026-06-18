@@ -1,11 +1,11 @@
 # Governance Portal
 
-삼성증권 AI 데이터 거버넌스 포털 구축을 위한 프론트엔드/백엔드 템플릿 프로젝트입니다. 현재 운영 화면은 대시보드와 CRUD 개발 템플릿을 유지하고, RFP 업무 화면은 신규 설계 기준으로 분리합니다.
+삼성증권 AI/RAG 데이터 거버넌스 포털 구축을 위한 Vue + Spring Boot 프로젝트입니다. 현재는 운영 기반, 인증/권한 구조, 공통 API/로깅/첨부/엑셀 기능, 통합메타관리와 권한관리 화면, 개발 참고 화면이 포함되어 있으며 일부 업무 메뉴는 placeholder 상태로 남아 있습니다.
 
 ## 기술 구조
 
-- Frontend: Vue 3, TypeScript, Vite, Element Plus, AG Grid, Vuelidate, ESLint
-- Backend: Java 21, Spring Boot 3.3, embedded Tomcat, Spring Security SAML2, Spring Batch, JPA/MyBatis/QueryDSL, EasyExcel
+- Frontend: Vue 3, TypeScript, Vite, Vue Router, Pinia, Element Plus, AG Grid, Vuelidate, TipTap, Vue Flow, ECharts, Tailwind CSS, ESLint, Vitest, Playwright
+- Backend: Java 21, Spring Boot 3.3.7, embedded Tomcat, Spring Security/SAML2, Spring Batch, JPA/MyBatis/QueryDSL, EasyExcel, Springdoc OpenAPI
 - DB/Cache: H2 local DB, Oracle JDBC(ojdbc11), Redis cache
 - Integration: RestClient + HTTP Interface 기반 외부 REST API 공통 클라이언트
 - 운영 Web: Nginx
@@ -34,6 +34,8 @@ Client
 | Node.js | 20.19 이상 또는 22.12 이상 | `node -v` |
 | npm | 10 이상 | `npm -v` |
 | Gradle | wrapper 사용 | `backend/gradlew.bat` 또는 `backend/gradlew` |
+
+내부망/오프라인 작업에서는 시스템 PATH의 Node/npm/Gradle보다 프로젝트 하위 `offline/` 캐시와 도구를 우선 사용합니다.
 
 ## 개발 실행
 
@@ -172,7 +174,7 @@ H2 콘솔 접속 정보:
 - 권한 데이터는 `portal_permission`, `portal_iam_role`, `portal_permission_assignment` 테이블로 관리합니다.
 - 프론트 메뉴/버튼은 권한 기준으로 숨기고, 백엔드 API는 `@PreAuthorize`와 `SecurityConfig`로 서버단 권한을 검사합니다.
 
-상세 구조와 로컬 권한 제한 테스트 방법은 `docs/permission-management-guide.md`를 기준으로 합니다.
+상세 구조와 로컬 권한 제한 테스트 방법은 `docs/permission-management-guide.md`를 기준으로 합니다. 메뉴와 진입 권한을 DB로 관리하는 확장 설계는 `설계/메뉴권한매핑설계.md`를 기준으로 검토합니다.
 
 ## DB 프로파일
 
@@ -289,14 +291,16 @@ EasyExcel처럼 Gradle 의존성이 추가되면 내부망 반입 전 반드시 
 .\scripts\build-offline-jar.ps1
 ```
 
-내부망으로 옮길 때는 `offline/gradle-home`, `offline/npm-cache`, `offline/nodejs`, `frontend`, `backend`를 함께 복사해야 합니다.
+내부망으로 옮길 때는 `offline/gradle-home`, `offline/npm-cache`, `offline/nodejs`, `frontend`, `backend`를 함께 복사해야 합니다. 개발 PC까지 같이 준비하려면 `offline/jdk`, `offline/vscode-extensions`도 함께 전달합니다.
 `offline` 하위 캐시는 `.gitignore` 대상이므로 git clone만으로는 전달되지 않습니다.
 
 ## 참고 문서
 
 - `docs/frontend/`: 프론트엔드 로컬 개발 온보딩과 화면 작성 기준
+- `docs/development-screen-to-db-guide.md`: 화면에서 API, 서비스, Repository, DB까지 따라가는 개발 순회 가이드
 - `docs/governance/screen-domain-template.md`: 기능목록 엑셀 기준 화면 도메인/템플릿 분류
 - `docs/governance/project-start-strategy.md`: 프로젝트 투입 후 내부망 형상관리와 Oracle Linux 운영 배포 전략
+- `설계/메뉴권한매핑설계.md`: 메뉴관리와 권한관리 연동 설계
 - `docs/permission-management-guide.md`: IAM/AD 연동 권한관리 화면, DB, 서버단 권한 검증 기준
 - `docs/excel-attachment-feature-guide.md`: 엑셀 다운로드/업로드와 첨부파일 처리 흐름
 - `docs/frontend/06-eslint-guide.md`: ESLint 역할과 VSCode 설정 기준
